@@ -1,27 +1,24 @@
 #
-# Makefile.uwp — wrap sm64ex’s Makefile for UWP + Render96EX
+# Makefile.uwp — wrap sm64ex’s Makefile for UWP + Render96EX HD
 #
 
 # 1) Pull in the upstream Makefile (we’ll clone sm64ex/ in CI)
 include sm64ex/Makefile
 
-# 2) Override / inject our UWP + SDL2-UWP + Render96EX flags
+# 2) UWP + SDL2-UWP + Render96EX flags
 WINSDK_VER    ?= 10.0.22621.0
 
-# SDL2-UWP from extern/SDL2_UWP
 SDL2_UWP_DIR  ?= extern/SDL2_UWP
 SDL_CFLAGS    := -I$(SDL2_UWP_DIR)/include
 SDL_LIBS      := $(SDL2_UWP_DIR)/lib/x64/SDL2-UWP.lib \
                  $(SDL2_UWP_DIR)/lib/x64/SDL2main.lib
 
-# Render96EX is *this* repo
-RENDER96_DIR      ?= .
-RENDER96_CFLAGS   := -I$(RENDER96_DIR)/include
-RENDER96_MACROS   := -DWIDESCREEN -DRENDER96EX_HD=1
+RENDER96_DIR    ?= .
+RENDER96_CFLAGS := -I$(RENDER96_DIR)/include
+RENDER96_MACROS := -DWIDESCREEN -DRENDER96EX_HD=1
 
-# Prepend into the normal build
-CPPFLAGS      := $(SDL_CFLAGS) $(RENDER96_CFLAGS) $(RENDER96_MACROS) $(CPPFLAGS)
-LDFLAGS       := $(SDL_LIBS) $(LDFLAGS)
+CPPFLAGS       := $(SDL_CFLAGS) $(RENDER96_CFLAGS) $(RENDER96_MACROS) $(CPPFLAGS)
+LDFLAGS        := $(SDL_LIBS)             $(LDFLAGS)
 
 .PHONY: all clean package
 
@@ -32,7 +29,7 @@ clean:
 	@$(MAKE) -C sm64ex clean
 
 package:
-	@# Copy HD textures into sm64ex before packaging
+	@# copy HD textures into sm64ex before packaging
 	@mkdir -p sm64ex/extern/Render96HD/assets
 	@cp -r assets/* sm64ex/extern/Render96HD/assets/
 	@$(MAKE) -C sm64ex package
