@@ -1,3 +1,4 @@
+# .github/workflows/uwp-msys2.yml
 name: Build Render96EX UWP via MSYS2
 
 on:
@@ -8,43 +9,40 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Check out your code (with submodules if needed)
+      # 1) Check out your code (with submodules, if any)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # 2) Set up MSYS2 and install only actual packages
+      # 2) Set up MSYS2 and install only the real toolchain + make
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
-          # UCRT64 shell is recommended for UWP compatibility
           msystem: UCRT64
           update: true
           install: |
             mingw-w64-ucrt-x86_64-toolchain
             mingw-w64-ucrt-x86_64-make
 
-      # 3) Build using your Makefile inside MSYS2
+      # 3) Build using your Makefile in the repo root
       - name: Build with make
         shell: msys2 {0}
         run: |
-          cd Render96EX
           make PLATFORM=uwp CONFIG=Release
 
-      # 4) Package into an MSIX/AppX bundle (assuming your Makefile supports it)
+      # 4) Package into MSIX/AppX (assuming your Makefile’s package target)
       - name: Package into MSIX
         shell: msys2 {0}
         run: |
-          cd Render96EX
           make package
 
-      # 5) Upload the resulting bundle(s) as artifacts for download
-      - name: Upload UWP Artifact
+      # 5) Upload any generated UWP bundles for download
+      - name: Upload UWP Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Render96EX-UWP
           path: |
-            Render96EX/*.msix
-            Render96EX/*.msixbundle
-            Render96EX/*.appxbundle
+            **/*.msix
+            **/*.msixbundle
+            **/*.appxbundle
