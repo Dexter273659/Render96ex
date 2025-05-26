@@ -1,0 +1,57 @@
+name: Build Render96EX UWP via MSYS2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  uwp-msys2-build:
+    runs-on: windows-latest
+
+    steps:
+      # 1) Check out your code (with submodules, if any)
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # 2) Set up MSYS2 (MINGW64/UCRT64 shell) and install toolchain + make
+      - name: Setup MSYS2 & install build tools
+        uses: msys2/setup-msys2@v2
+        with:
+          # you can choose UCRT64 or MINGW64; UCRT64 is recommended
+          msystem: UCRT64
+          update: true
+          install: >
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-make
+            # Add any other deps your Makefile needs:
+            # SDL2-devel gtk-doc-tools etc.
+
+      # 3) Build inside MSYS2
+      - name: Build with make
+        shell: msys2 {0}
+        run: |
+          cd Render96EX
+          # if your Makefile has a UWP/platform toggle, e.g.:
+          make PLATFORM=uwp CONFIG=Release
+
+      # 4) (Optional) Run a packaging target
+      - name: Package into MSIX
+        shell: msys2 {0}
+        run: |
+          cd Render96EX
+          # If your Makefile has a package target:
+          make package
+          # Otherwise you can invoke `make` then call the MSIX SDK tools:
+          # make
+          # /c/Program\ Files/Windows\ Kits/10/bin/*/makeappx.exe pack /d output_folder /p MyApp.msix
+
+      # 5) Upload the .msix or .appxbundle for download
+      - name: Upload UWP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Render96EX-UWP
+          path: |
+            Render96EX/*.msix
+            Render96EX/*.msixbundle
+            Render96EX/*.appxbundle
