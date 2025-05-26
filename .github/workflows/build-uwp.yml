@@ -1,0 +1,66 @@
+name: Build sm64ex-UWP with Render96EX HD
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      # 1) Checkout this Render96EX fork
+      - uses: actions/checkout@v4
+        with:
+          path: render96ex
+
+      # 2) Clone the upstream sm64ex
+      - name: Clone sm64ex
+        run: |
+          git clone --depth=1 https://github.com/sm64pc/sm64ex.git sm64ex
+
+      # 3) Provide a POSIX 'cc' for the N64 tools
+      - name: Setup MSYS2 & host tools
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: mingw-w64-x86_64-gcc make
+        shell: msys2 {0}
+      - name: Build host tools
+        shell: msys2 {0}
+        run: |
+          cd sm64ex/tools
+          make n64graphics skyconv mio0 aifc_decode
+      - name: Expose host tools
+        run: echo "${{ github.workspace }}/sm64ex/tools" >> $GITHUB_PATH
+
+      # 4) Activate MSVC + WinSDK
+      - name: Activate MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # 5) Build SDL2-UWP (x64 Release) into sm64ex/extern/SDL2_UWP
+      - name: Build SDL2-UWP
+        shell: pwsh
+        run: |
+          git clone --depth=1 --branch release-2.32.4 https://github.com/libsdl-org/SDL.git SDL-src
+          msbuild SDL-src\VisualC-WinRT\SDL-UWP.sln /p:Configuration=Release /p:Platform=x64
+          Remove-Item -Recurse -Force sm64ex\extern\SDL2_UWP
+          New-Item -ItemType Directory sm64ex\extern\SDL2_UWP\include
+          New-Item -ItemType Directory sm64ex\extern\SDL2_UWP\lib\x64
+          Copy-Item SDL-src\include\* sm64ex\extern\SDL2_UWP\include\ -Recurse
+          Copy-Item SDL-src\VisualC-WinRT\UWP\x64\Release\SDL2-UWP.lib,SDL-src\VisualC-WinRT\UWP\x64\Release\SDL2main.lib sm64ex\extern\SDL2_UWP\lib\x64\
+
+      # 6) Invoke our wrapper Makefile to build & package
+      - name: Build & Package UWP
+        shell: cmd
+        run: |
+          cd %GITHUB_WORKSPACE%
+          make -f render96ex/Makefile.uwp clean
+          make -f render96ex/Makefile.uwp all
+          make -f render96ex/Makefile.uwp package
+
+      # 7) Upload the .appx artifact
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sm64ex-uwp
+          path: sm64ex\build\sm64exUWP.appx
