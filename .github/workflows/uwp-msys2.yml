@@ -15,15 +15,16 @@ jobs:
         with:
           submodules: recursive
 
-      # 2) Set up MSYS2 and install only the real toolchain + make
+      # 2) Set up MSYS2 and install make + the UCRT64 toolchain
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
+          # UCRT64 shell is recommended for UWP compatibility
           msystem: UCRT64
           update: true
           install: |
+            make
             mingw-w64-ucrt-x86_64-toolchain
-            mingw-w64-ucrt-x86_64-make
 
       # 3) Build using your Makefile in the repo root
       - name: Build with make
