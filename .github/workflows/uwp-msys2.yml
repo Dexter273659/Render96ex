@@ -1,4 +1,3 @@
-# .github/workflows/uwp-msys2.yml
 name: Build Render96EX UWP via MSYS2
 
 on:
@@ -9,36 +8,43 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Check out your code (with submodules, if any)
+      # 1) Check out your code repo (include submodules if you need them)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # 2) Set up MSYS2 and install make + the UCRT64 toolchain
+      # 2) Spin up MSYS2, install git, make and the UCRT64 toolchain
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
-          # UCRT64 shell is recommended for UWP compatibility
           msystem: UCRT64
           update: true
           install: |
+            git
             make
             mingw-w64-ucrt-x86_64-toolchain
 
-      # 3) Build using your Makefile in the repo root
+      # 3) Make sure the base ROM is present
+      - name: Check for base ROM
+        shell: msys2 {0}
+        run: |
+          if [ ! -f baserom.us.z64 ]; then
+            echo "::error::Missing baserom.us.z64 – please add your own N64 ROM to the repo root, named exactly baserom.us.z64"
+            exit 1
+          fi
+
+      # 4) Build your UWP binaries
       - name: Build with make
         shell: msys2 {0}
-        run: |
-          make PLATFORM=uwp CONFIG=Release
+        run: make PLATFORM=uwp CONFIG=Release
 
-      # 4) Package into MSIX/AppX (assuming your Makefile’s package target)
+      # 5) Package into MSIX/AppX
       - name: Package into MSIX
         shell: msys2 {0}
-        run: |
-          make package
+        run: make package
 
-      # 5) Upload any generated UWP bundles for download
+      # 6) Upload any UWP bundles for download
       - name: Upload UWP Artifacts
         uses: actions/upload-artifact@v4
         with:
