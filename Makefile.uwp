@@ -1,0 +1,32 @@
+#
+# Makefile.uwp — invoke sm64ex’s Makefile for a UWP build
+#
+
+# 1) Pull in the real Makefile from sm64ex (we’ll clone it in CI)
+include sm64ex/Makefile
+
+# 2) Override / inject our UWP + SDL2-UWP + Render96EX flags
+WINSDK_VER    ?= 10.0.22621.0
+SDL2_UWP_DIR  ?= extern/SDL2_UWP
+SDL_CFLAGS    := -I$(SDL2_UWP_DIR)/include
+SDL_LIBS      := $(SDL2_UWP_DIR)/lib/x64/SDL2-UWP.lib \
+                 $(SDL2_UWP_DIR)/lib/x64/SDL2main.lib
+
+RENDER96_DIR  ?= .
+RENDER96_CFLAGS := -I$(RENDER96_DIR)/include
+RENDER96_MACROS := -DWIDESCREEN -DRENDER96EX_HD=1
+
+# Prepend into the normal build
+CPPFLAGS      := $(SDL_CFLAGS) $(RENDER96_CFLAGS) $(RENDER96_MACROS) $(CPPFLAGS)
+LDFLAGS       := $(SDL_LIBS) $(LDFLAGS)
+
+.PHONY: all clean package
+all:            ## run sm64ex’s default 'all'
+	$(MAKE) -C sm64ex all
+clean:          ## clean both repos
+	$(MAKE) -C sm64ex clean
+package:        ## copy assets then package via sm64ex’s 'package' rule
+	@# copy Render96EX assets into sm64ex before packaging
+	@mkdir -p sm64ex/extern/Render96HD/assets
+	@cp -r assets/* sm64ex/extern/Render96HD/assets/
+	$(MAKE) -C sm64ex package
