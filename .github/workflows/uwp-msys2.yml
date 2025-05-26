@@ -8,45 +8,38 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Check out your code (with submodules, if any)
-      - name: Checkout
+      # 1) Check out your code (with submodules if needed)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # 2) Set up MSYS2 (MINGW64/UCRT64 shell) and install toolchain + make
+      # 2) Set up MSYS2 and install only actual packages
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
-          # you can choose UCRT64 or MINGW64; UCRT64 is recommended
+          # UCRT64 shell is recommended for UWP compatibility
           msystem: UCRT64
           update: true
-          install: >
+          install: |
             mingw-w64-ucrt-x86_64-toolchain
             mingw-w64-ucrt-x86_64-make
-            # Add any other deps your Makefile needs:
-            # SDL2-devel gtk-doc-tools etc.
 
-      # 3) Build inside MSYS2
+      # 3) Build using your Makefile inside MSYS2
       - name: Build with make
         shell: msys2 {0}
         run: |
           cd Render96EX
-          # if your Makefile has a UWP/platform toggle, e.g.:
           make PLATFORM=uwp CONFIG=Release
 
-      # 4) (Optional) Run a packaging target
+      # 4) Package into an MSIX/AppX bundle (assuming your Makefile supports it)
       - name: Package into MSIX
         shell: msys2 {0}
         run: |
           cd Render96EX
-          # If your Makefile has a package target:
           make package
-          # Otherwise you can invoke `make` then call the MSIX SDK tools:
-          # make
-          # /c/Program\ Files/Windows\ Kits/10/bin/*/makeappx.exe pack /d output_folder /p MyApp.msix
 
-      # 5) Upload the .msix or .appxbundle for download
+      # 5) Upload the resulting bundle(s) as artifacts for download
       - name: Upload UWP Artifact
         uses: actions/upload-artifact@v4
         with:
