@@ -3,11 +3,11 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap mp rescap">
+  IgnorableNamespaces="uap rescap">
 
   <!-- Identity -->
   <Identity
-    Name="com.Dexter273659.Render96EX"
+    Name="com.KaydenBerry.Render96EX"
     Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
     Version="1.0.0.0" />
 
@@ -16,7 +16,7 @@
     <DisplayName>Render96EX</DisplayName>
     <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
     <Description>Super Mario 64 UWP port</Description>
-    <Logo>Assets\StoreLogo.png</Logo>
+    <Logo>Assets\\StoreLogo.png</Logo>
   </Properties>
 
   <!-- Capabilities -->
@@ -31,8 +31,8 @@
                  EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Render96EX"
-        Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png"
+        Square150x150Logo="Assets\\Square150x150Logo.png"
+        Square44x44Logo="Assets\\Square44x44Logo.png"
         Description="Super Mario 64 UWP port"
         BackgroundColor="transparent" />
     </Application>
