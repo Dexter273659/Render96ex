@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Checkout your code
+      # 1) Check out your code
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -58,47 +58,47 @@ jobs:
         shell: pwsh
         run: |
           $manifest = @'
-<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-         IgnorableNamespaces="uap rescap">
+          <?xml version="1.0" encoding="utf-8"?>
+          <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+                   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+                   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+                   IgnorableNamespaces="uap rescap">
 
-  <Identity Name="com.KaydenBerry.Render96EX"
-            Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
-            Version="1.0.0.0" />
+            <Identity Name="com.KaydenBerry.Render96EX"
+                      Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
+                      Version="1.0.0.0" />
 
-  <Properties>
-    <DisplayName>Render96EX</DisplayName>
-    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
-    <Description>Super Mario 64 UWP port</Description>
-    <Logo>Assets/StoreLogo.png</Logo>
-  </Properties>
+            <Properties>
+              <DisplayName>Render96EX</DisplayName>
+              <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
+              <Description>Super Mario 64 UWP port</Description>
+              <Logo>Assets/StoreLogo.png</Logo>
+            </Properties>
 
-  <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal"
-                        MinVersion="10.0.0.0"
-                        MaxVersionTested="10.0.26100.0" />
-  </Dependencies>
+            <Dependencies>
+              <TargetDeviceFamily Name="Windows.Universal"
+                                  MinVersion="10.0.0.0"
+                                  MaxVersionTested="10.0.26100.0" />
+            </Dependencies>
 
-  <Capabilities>
-    <rescap:Capability Name="runFullTrust"/>
-  </Capabilities>
+            <Capabilities>
+              <rescap:Capability Name="runFullTrust"/>
+            </Capabilities>
 
-  <Applications>
-    <Application Id="App"
-                 Executable="Render96EX.exe"
-                 EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="Render96EX"
-                          Square150x150Logo="Assets/Square150x150Logo.png"
-                          Square44x44Logo="Assets/Square44x44Logo.png"
-                          Description="Super Mario 64 UWP port"
-                          BackgroundColor="transparent" />
-    </Application>
-  </Applications>
+            <Applications>
+              <Application Id="App"
+                           Executable="Render96EX.exe"
+                           EntryPoint="Windows.FullTrustApplication">
+                <uap:VisualElements DisplayName="Render96EX"
+                                    Square150x150Logo="Assets/Square150x150Logo.png"
+                                    Square44x44Logo="Assets/Square44x44Logo.png"
+                                    Description="Super Mario 64 UWP port"
+                                    BackgroundColor="transparent" />
+              </Application>
+            </Applications>
 
-</Package>
-'@
+          </Package>
+          '@
           $manifest | Out-File -FilePath output/AppxManifest.xml -Encoding utf8
 
       # 7) Auto-generate placeholder PNG assets
