@@ -54,17 +54,21 @@ jobs:
           mkdir -p output
           cp -r build/* output/
 
-      # 6) Package with whatever makeappx.exe is on PATH
+      # 6) Package into an Appx by finding makeappx.exe in the Windows Kits
       - name: Package UWP App
         shell: pwsh
         run: |
-          $makeappx = (where.exe makeappx.exe | Select-Object -First 1).Trim()
-          if (-not (Test-Path $makeappx)) {
-            Write-Error "makeappx.exe not found on PATH"
+          $kitsPath = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          # Look in any SDK version folder under 'bin' for the x64 makeappx.exe
+          $makeappx = Get-ChildItem -Path "$kitsPath\*\x64\makeappx.exe" -ErrorAction SilentlyContinue |
+                       Sort-Object DirectoryName -Descending |
+                       Select-Object -First 1
+          if (-not $makeappx) {
+            Write-Error "makeappx.exe not found under $kitsPath; cannot package."
             exit 1
           }
-          Write-Host "Using makeappx at: $makeappx"
-          & $makeappx pack /d output /p Render96EX.appx
+          Write-Host "Using makeappx at: $($makeappx.FullName)"
+          & $makeappx.FullName pack /d output /p Render96EX.appx
 
       # 7) Upload the .appx for sideloading
       - name: Upload UWP Appx
