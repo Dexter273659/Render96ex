@@ -8,13 +8,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Check out your code
+      # 1) Check out your code (you only need your source + baserom.us.z64)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # 2) Set up MSYS2 + dependencies
+      # 2) Install MSYS2 + build tools & libraries
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
@@ -32,12 +32,12 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Verify baserom.us.z64 is present
-      - name: Check for base ROM
+      # 3) Ensure your legally-owned ROM is present
+      - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
           if [ ! -f baserom.us.z64 ]; then
-            echo "::error::Missing baserom.us.z64 – add your legally-owned ROM as baserom.us.z64 in the repo root."
+            echo "::error::Missing baserom.us.z64 – add it to your repo root."
             exit 1
           fi
 
@@ -46,47 +46,88 @@ jobs:
         shell: msys2 {0}
         run: make PLATFORM=uwp CONFIG=Release
 
-      # 5) Collect into output/
+      # 5) Collect build output
       - name: Collect build output
         shell: msys2 {0}
         run: |
           mkdir -p output
           cp -r build/* output/
 
-      # 6) Copy the AppxManifest into output/
-      - name: Copy AppxManifest
+      # 6) Generate a valid AppxManifest.xml in output/
+      - name: Generate AppxManifest.xml
+        shell: pwsh
         run: |
-          cp AppxManifest.xml output/
+          $manifest = @"
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap rescap">
 
-      # 7) Auto-generate placeholder PNG assets
+  <Identity Name="com.KaydenBerry.Render96EX"
+            Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
+            Version="1.0.0.0" />
+
+  <Properties>
+    <DisplayName>Render96EX</DisplayName>
+    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
+    <Description>Super Mario 64 UWP port</Description>
+    <Logo>Assets/StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal"
+                        MinVersion="10.0.0.0"
+                        MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust"/>
+  </Capabilities>
+
+  <Applications>
+    <Application Id="App"
+                 Executable="Render96EX.exe"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Render96EX"
+                          Square150x150Logo="Assets/Square150x150Logo.png"
+                          Square44x44Logo="Assets/Square44x44Logo.png"
+                          Description="Super Mario 64 UWP port"
+                          BackgroundColor="transparent" />
+    </Application>
+  </Applications>
+
+</Package>
+"@
+          $manifest | Out-File output\AppxManifest.xml -Encoding utf8
+
+      # 7) Generate three placeholder PNGs in output/Assets/
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
-          $outAssets = "output\\Assets"
-          if (!(Test-Path $outAssets)) { New-Item -ItemType Directory -Path $outAssets | Out-Null }
           Add-Type -AssemblyName System.Drawing
-          $sizes = @{44='Square44x44Logo.png'; 150='Square150x150Logo.png'; 50='StoreLogo.png'}
-          foreach ($size in $sizes.Keys) {
+          $out = "output\Assets"
+          if (!(Test-Path $out)) { New-Item -ItemType Directory -Path $out | Out-Null }
+          $map = @{44='Square44x44Logo.png'; 150='Square150x150Logo.png'; 50='StoreLogo.png'}
+          foreach ($size in $map.Keys) {
             $bmp = New-Object System.Drawing.Bitmap($size, $size)
-            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g   = [System.Drawing.Graphics]::FromImage($bmp)
             $g.Clear([System.Drawing.Color]::LightGray)
-            $bmp.Save("$outAssets\\$($sizes[$size])",[System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose()
-            $bmp.Dispose()
+            $bmp.Save("$out\$($map[$size])",[System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose(); $bmp.Dispose()
           }
 
-      # 8) Package the Appx
+      # 8) Package the folder into a UWP .appx
       - name: Package UWP App
         shell: pwsh
         run: |
-          $kits = "${env:ProgramFiles(x86)}\\Windows Kits\\10\\bin"
-          $makeappx = Get-ChildItem -Path "$kits\\*\\x64\\makeappx.exe" -ErrorAction SilentlyContinue |
-                       Sort-Object DirectoryName -Descending |
-                       Select-Object -First 1
-          if (-not $makeappx) { throw "makeappx.exe not found." }
+          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -ErrorAction SilentlyContinue |
+                       Sort-Object DirectoryName -Descending | Select-Object -First 1
+          if (-not $makeappx) { throw "makeappx.exe not found" }
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 9) Upload the .appx for sideloading
+      # 9) Upload the .appx artifact for download
       - name: Upload UWP Appx
         uses: actions/upload-artifact@v4
         with:
