@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap mp rescap">
+
+  <!-- Identity -->
+  <Identity
+    Name="com.YOURGITHUBUSERNAME.Render96EX"
+    Publisher="CN=00000000-0000-0000-0000-000000000000"
+    Version="1.0.0.0" />
+
+  <!-- Properties -->
+  <Properties>
+    <DisplayName>Render96EX</DisplayName>
+    <PublisherDisplayName>Your Name</PublisherDisplayName>
+    <Description>Super Mario 64 UWP port</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <!-- Capabilities -->
+  <Capabilities>
+    <!-- if it’s a full-trust desktop app: -->
+    <rescap:Capability Name="runFullTrust"/>
+  </Capabilities>
+
+  <!-- Applications -->
+  <Applications>
+    <Application Id="App"
+                 Executable="Render96EX.exe"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Render96EX"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        Description="Super Mario 64 UWP port"
+        BackgroundColor="transparent" />
+    </Application>
+  </Applications>
+
+</Package>
