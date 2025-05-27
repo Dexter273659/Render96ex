@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
 
-      # 4) Build with make
+      # 4) Build the UWP binaries
       - name: Build with make
         shell: msys2 {0}
         run: make PLATFORM=uwp CONFIG=Release
@@ -53,12 +53,17 @@ jobs:
           mkdir -p output
           cp -r build/* output/
 
-      # 6) Normalize the executable name
+      # 6) Normalize the executable filename
       - name: Normalize executable name
         shell: msys2 {0}
         run: |
+          set -e
           cd output
-          exe=$(ls *.exe | head -n 1)
+          exe=$(find . -type f -iname "*.exe" -print -quit)
+          if [ -z "$exe" ]; then
+            echo "::error::No .exe found under output"
+            exit 1
+          fi
           mv "$exe" Render96EX.exe
 
       # 7) Generate AppxManifest.xml in output/
@@ -66,29 +71,29 @@ jobs:
         shell: pwsh
         run: |
           $lines = @(
-            '<?xml version="1.0" encoding="utf-8"?>'
-            '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">'
-            '  <Identity Name="com.KaydenBerry.Render96EX" Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6" Version="1.0.0.0" />'
-            '  <Properties>'
-            '    <DisplayName>Render96EX</DisplayName>'
-            '    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>'
-            '    <Description>Super Mario 64 UWP port</Description>'
-            '    <Logo>Assets/StoreLogo.png</Logo>'
-            '  </Properties>'
-            '  <Dependencies>'
-            '    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.26100.0" />'
-            '  </Dependencies>'
-            '  <Resources>'
-            '    <Resource Language="en-us" />'
-            '  </Resources>'
-            '  <Capabilities>'
-            '    <rescap:Capability Name="runFullTrust" />'
-            '  </Capabilities>'
-            '  <Applications>'
-            '    <Application Id="App" Executable="Render96EX.exe" EntryPoint="Windows.FullTrustApplication">'
-            '      <uap:VisualElements DisplayName="Render96EX" Square150x150Logo="Assets/Square150x150Logo.png" Square44x44Logo="Assets/Square44x44Logo.png" Description="Super Mario 64 UWP port" BackgroundColor="transparent" />'
-            '    </Application>'
-            '  </Applications>'
+            '<?xml version="1.0" encoding="utf-8"?>',
+            '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">',
+            '  <Identity Name="com.KaydenBerry.Render96EX" Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6" Version="1.0.0.0" />',
+            '  <Properties>',
+            '    <DisplayName>Render96EX</DisplayName>',
+            '    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>',
+            '    <Description>Super Mario 64 UWP port</Description>',
+            '    <Logo>Assets/StoreLogo.png</Logo>',
+            '  </Properties>',
+            '  <Dependencies>',
+            '    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.26100.0" />',
+            '  </Dependencies>',
+            '  <Resources>',
+            '    <Resource Language="en-us" />',
+            '  </Resources>',
+            '  <Capabilities>',
+            '    <rescap:Capability Name="runFullTrust" />',
+            '  </Capabilities>',
+            '  <Applications>',
+            '    <Application Id="App" Executable="Render96EX.exe" EntryPoint="Windows.FullTrustApplication">',
+            '      <uap:VisualElements DisplayName="Render96EX" Square150x150Logo="Assets/Square150x150Logo.png" Square44x44Logo="Assets/Square44x44Logo.png" Description="Super Mario 64 UWP port" BackgroundColor="transparent" />',
+            '    </Application>',
+            '  </Applications>',
             '</Package>'
           )
           $lines | Out-File output/AppxManifest.xml -Encoding utf8
