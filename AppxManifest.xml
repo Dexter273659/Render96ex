@@ -7,21 +7,20 @@
 
   <!-- Identity -->
   <Identity
-    Name="com.YOURGITHUBUSERNAME.Render96EX"
-    Publisher="CN=00000000-0000-0000-0000-000000000000"
+    Name="com.Dexter273659.Render96EX"
+    Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
     Version="1.0.0.0" />
 
   <!-- Properties -->
   <Properties>
     <DisplayName>Render96EX</DisplayName>
-    <PublisherDisplayName>Your Name</PublisherDisplayName>
+    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
     <Description>Super Mario 64 UWP port</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
   <!-- Capabilities -->
   <Capabilities>
-    <!-- if it’s a full-trust desktop app: -->
     <rescap:Capability Name="runFullTrust"/>
   </Capabilities>
 
