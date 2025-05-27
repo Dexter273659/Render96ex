@@ -53,7 +53,7 @@ jobs:
           mkdir -p output
           cp -r build/* output/
 
-      # 6) Normalize the executable filename
+      # 6) Normalize the executable name
       - name: Normalize executable name
         shell: msys2 {0}
         run: |
@@ -65,46 +65,33 @@ jobs:
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
-          $manifest = @"
-<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-         IgnorableNamespaces="uap rescap">
-  <Identity Name="com.KaydenBerry.Render96EX"
-            Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
-            Version="1.0.0.0" />
-  <Properties>
-    <DisplayName>Render96EX</DisplayName>
-    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
-    <Description>Super Mario 64 UWP port</Description>
-    <Logo>Assets/StoreLogo.png</Logo>
-  </Properties>
-  <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal"
-                        MinVersion="10.0.0.0"
-                        MaxVersionTested="10.0.26100.0" />
-  </Dependencies>
-  <Resources>
-    <Resource Language="en-us" />
-  </Resources>
-  <Capabilities>
-    <rescap:Capability Name="runFullTrust" />
-  </Capabilities>
-  <Applications>
-    <Application Id="App"
-                 Executable="Render96EX.exe"
-                 EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="Render96EX"
-                          Square150x150Logo="Assets/Square150x150Logo.png"
-                          Square44x44Logo="Assets/Square44x44Logo.png"
-                          Description="Super Mario 64 UWP port"
-                          BackgroundColor="transparent" />
-    </Application>
-  </Applications>
-</Package>
-"@
-          $manifest | Out-File -FilePath output/AppxManifest.xml -Encoding utf8
+          $lines = @(
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">'
+            '  <Identity Name="com.KaydenBerry.Render96EX" Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6" Version="1.0.0.0" />'
+            '  <Properties>'
+            '    <DisplayName>Render96EX</DisplayName>'
+            '    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>'
+            '    <Description>Super Mario 64 UWP port</Description>'
+            '    <Logo>Assets/StoreLogo.png</Logo>'
+            '  </Properties>'
+            '  <Dependencies>'
+            '    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.26100.0" />'
+            '  </Dependencies>'
+            '  <Resources>'
+            '    <Resource Language="en-us" />'
+            '  </Resources>'
+            '  <Capabilities>'
+            '    <rescap:Capability Name="runFullTrust" />'
+            '  </Capabilities>'
+            '  <Applications>'
+            '    <Application Id="App" Executable="Render96EX.exe" EntryPoint="Windows.FullTrustApplication">'
+            '      <uap:VisualElements DisplayName="Render96EX" Square150x150Logo="Assets/Square150x150Logo.png" Square44x44Logo="Assets/Square44x44Logo.png" Description="Super Mario 64 UWP port" BackgroundColor="transparent" />'
+            '    </Application>'
+            '  </Applications>'
+            '</Package>'
+          )
+          $lines | Out-File output/AppxManifest.xml -Encoding utf8
 
       # 8) Generate placeholder Assets
       - name: Generate placeholder Assets
@@ -113,7 +100,7 @@ jobs:
           Add-Type -AssemblyName System.Drawing
           $out = "output\Assets"
           if (!(Test-Path $out)) { New-Item -ItemType Directory -Path $out | Out-Null }
-          $map = @{44='Square44x44Logo.png';150='Square150x150Logo.png';50='StoreLogo.png'}
+          $map = @{44='Square44x44Logo.png'; 150='Square150x150Logo.png'; 50='StoreLogo.png'}
           foreach ($size in $map.Keys) {
             $bmp = New-Object System.Drawing.Bitmap($size, $size)
             $g   = [System.Drawing.Graphics]::FromImage($bmp)
@@ -123,17 +110,18 @@ jobs:
             $bmp.Dispose()
           }
 
-      # 9) Package into .appx
+      # 9) Package UWP App
       - name: Package UWP App
         shell: pwsh
         run: |
           $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
           $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -ErrorAction SilentlyContinue |
-                       Sort-Object DirectoryName -Descending | Select-Object -First 1
+                       Sort-Object DirectoryName -Descending |
+                       Select-Object -First 1
           if (-not $makeappx) { throw "makeappx.exe not found" }
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 10) Upload the .appx
+      # 10) Upload UWP Appx
       - name: Upload UWP Appx
         uses: actions/upload-artifact@v4
         with:
