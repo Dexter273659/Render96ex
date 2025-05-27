@@ -9,13 +9,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Check out your code (with any submodules)
+      # 1) Check out your code (include submodules if needed)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # 2) Set up MSYS2 + install git, make, UCRT64 toolchain, SDL2, image/audio/font libs, etc.
+      # 2) Install MSYS2 + toolchain & deps
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
@@ -33,7 +33,7 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Verify you’ve added your base ROM as baserom.us.z64
+      # 3) Verify baserom.us.z64 is present
       - name: Check for base ROM
         shell: msys2 {0}
         run: |
@@ -42,34 +42,31 @@ jobs:
             exit 1
           fi
 
-      # 4) Run your Makefile to build the UWP binaries
+      # 4) Build UWP binaries
       - name: Build with make
         shell: msys2 {0}
         run: make PLATFORM=uwp CONFIG=Release
 
-      # 5) Gather everything under build/ into a single output/ folder
+      # 5) Collect into output/
       - name: Collect build output
         shell: msys2 {0}
         run: |
           mkdir -p output
           cp -r build/* output/
 
-      # 6) Package into an Appx using MakeAppx.exe from the Windows 10 SDK
+      # 6) Package with whatever makeappx.exe is on PATH
       - name: Package UWP App
         shell: pwsh
         run: |
-          $arch = 'x64'
-          $kitsPath = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-          # Pick the newest SDK folder that contains makeappx.exe
-          $kitVersion = Get-ChildItem $kitsPath |
-            Where-Object { Test-Path "$kitsPath\${($_.Name)}\$arch\makeappx.exe" } |
-            Sort-Object Name -Descending |
-            Select-Object -First 1 -ExpandProperty Name
-          $makeappx = Join-Path $kitsPath "$kitVersion\$arch\makeappx.exe"
-          Write-Host "Packaging with: $makeappx"
-          & $makeappx pack /d output /p Render96EX.appx  # :contentReference[oaicite:0]{index=0}
+          $makeappx = (where.exe makeappx.exe | Select-Object -First 1).Trim()
+          if (-not (Test-Path $makeappx)) {
+            Write-Error "makeappx.exe not found on PATH"
+            exit 1
+          }
+          Write-Host "Using makeappx at: $makeappx"
+          & $makeappx pack /d output /p Render96EX.appx
 
-      # 7) Upload the resulting .appx so you can download & sideload it
+      # 7) Upload the .appx for sideloading
       - name: Upload UWP Appx
         uses: actions/upload-artifact@v4
         with:
