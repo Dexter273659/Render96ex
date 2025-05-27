@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Check out your code (you only need your source + baserom.us.z64)
+      # 1) Checkout your code
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -32,7 +32,7 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Ensure your legally-owned ROM is present
+      # 3) Check for your ROM
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
 
-      # 4) Build the UWP binaries
+      # 4) Build with make
       - name: Build with make
         shell: msys2 {0}
         run: make PLATFORM=uwp CONFIG=Release
@@ -57,7 +57,7 @@ jobs:
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
-          $manifest = @"
+          $manifest = @'
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
@@ -98,17 +98,17 @@ jobs:
   </Applications>
 
 </Package>
-"@
-          $manifest | Out-File output\AppxManifest.xml -Encoding utf8
+'@
+          $manifest | Out-File -FilePath output/AppxManifest.xml -Encoding utf8
 
-      # 7) Generate three placeholder PNGs in output/Assets/
+      # 7) Auto-generate placeholder PNG assets
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
           Add-Type -AssemblyName System.Drawing
           $out = "output\Assets"
           if (!(Test-Path $out)) { New-Item -ItemType Directory -Path $out | Out-Null }
-          $map = @{44='Square44x44Logo.png'; 150='Square150x150Logo.png'; 50='StoreLogo.png'}
+          $map = @{44='Square44x44Logo.png';150='Square150x150Logo.png';50='StoreLogo.png'}
           foreach ($size in $map.Keys) {
             $bmp = New-Object System.Drawing.Bitmap($size, $size)
             $g   = [System.Drawing.Graphics]::FromImage($bmp)
@@ -117,7 +117,7 @@ jobs:
             $g.Dispose(); $bmp.Dispose()
           }
 
-      # 8) Package the folder into a UWP .appx
+      # 8) Package into a UWP .appx
       - name: Package UWP App
         shell: pwsh
         run: |
@@ -127,7 +127,7 @@ jobs:
           if (-not $makeappx) { throw "makeappx.exe not found" }
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 9) Upload the .appx artifact for download
+      # 9) Upload the .appx for sideloading
       - name: Upload UWP Appx
         uses: actions/upload-artifact@v4
         with:
