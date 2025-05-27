@@ -32,7 +32,7 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Ensure baserom.us.z64 is present
+      # 3) Check for baserom.us.z64
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -41,12 +41,12 @@ jobs:
             exit 1
           fi
 
-      # 4) Build the UWP binaries
+      # 4) Build with make
       - name: Build with make
         shell: msys2 {0}
         run: make PLATFORM=uwp CONFIG=Release
 
-      # 5) Collect build output into output/
+      # 5) Collect build output
       - name: Collect build output
         shell: msys2 {0}
         run: |
@@ -61,42 +61,36 @@ jobs:
           exe=$(ls *.exe | head -n 1)
           mv "$exe" Render96EX.exe
 
-      # 7) Generate a valid AppxManifest.xml in output/
+      # 7) Generate AppxManifest.xml in output/
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
-          $manifest = @'
+          $manifest = @"
 <?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap rescap">
-
   <Identity Name="com.KaydenBerry.Render96EX"
             Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
             Version="1.0.0.0" />
-
   <Properties>
     <DisplayName>Render96EX</DisplayName>
     <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
     <Description>Super Mario 64 UWP port</Description>
     <Logo>Assets/StoreLogo.png</Logo>
   </Properties>
-
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Universal"
                         MinVersion="10.0.0.0"
                         MaxVersionTested="10.0.26100.0" />
   </Dependencies>
-
   <Resources>
-    <Resource Language="en-us"/>
+    <Resource Language="en-us" />
   </Resources>
-
   <Capabilities>
-    <rescap:Capability Name="runFullTrust"/>
+    <rescap:Capability Name="runFullTrust" />
   </Capabilities>
-
   <Applications>
     <Application Id="App"
                  Executable="Render96EX.exe"
@@ -108,12 +102,11 @@ jobs:
                           BackgroundColor="transparent" />
     </Application>
   </Applications>
-
 </Package>
-'@
+"@
           $manifest | Out-File -FilePath output/AppxManifest.xml -Encoding utf8
 
-      # 8) Auto-generate placeholder PNG assets
+      # 8) Generate placeholder Assets
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
@@ -126,10 +119,11 @@ jobs:
             $g   = [System.Drawing.Graphics]::FromImage($bmp)
             $g.Clear([System.Drawing.Color]::LightGray)
             $bmp.Save("$out\$($map[$size])",[System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose(); $bmp.Dispose()
+            $g.Dispose()
+            $bmp.Dispose()
           }
 
-      # 9) Package into a UWP .appx
+      # 9) Package into .appx
       - name: Package UWP App
         shell: pwsh
         run: |
@@ -139,7 +133,7 @@ jobs:
           if (-not $makeappx) { throw "makeappx.exe not found" }
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 10) Upload the .appx for sideloading
+      # 10) Upload the .appx
       - name: Upload UWP Appx
         uses: actions/upload-artifact@v4
         with:
