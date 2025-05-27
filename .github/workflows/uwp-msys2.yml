@@ -1,4 +1,3 @@
-# .github/workflows/uwp-msys2.yml
 name: Build Render96EX UWP via MSYS2
 
 on:
@@ -9,13 +8,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Check out your code (include submodules if needed)
+      # 1) Check out your code
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # 2) Install MSYS2 + toolchain & deps
+      # 2) Set up MSYS2 + dependencies
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
@@ -38,11 +37,11 @@ jobs:
         shell: msys2 {0}
         run: |
           if [ ! -f baserom.us.z64 ]; then
-            echo "::error::Missing baserom.us.z64 – add your legally-owned ROM to the repo root with exactly this filename."
+            echo "::error::Missing baserom.us.z64 – add your legally-owned ROM as baserom.us.z64 in the repo root."
             exit 1
           fi
 
-      # 4) Build UWP binaries
+      # 4) Build the UWP binaries
       - name: Build with make
         shell: msys2 {0}
         run: make PLATFORM=uwp CONFIG=Release
@@ -54,23 +53,40 @@ jobs:
           mkdir -p output
           cp -r build/* output/
 
-      # 6) Package into an Appx by finding makeappx.exe in the Windows Kits
+      # 6) Copy the AppxManifest into output/
+      - name: Copy AppxManifest
+        run: |
+          cp AppxManifest.xml output/
+
+      # 7) Auto-generate placeholder PNG assets
+      - name: Generate placeholder Assets
+        shell: pwsh
+        run: |
+          $outAssets = "output\\Assets"
+          if (!(Test-Path $outAssets)) { New-Item -ItemType Directory -Path $outAssets | Out-Null }
+          Add-Type -AssemblyName System.Drawing
+          $sizes = @{44='Square44x44Logo.png'; 150='Square150x150Logo.png'; 50='StoreLogo.png'}
+          foreach ($size in $sizes.Keys) {
+            $bmp = New-Object System.Drawing.Bitmap($size, $size)
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.Clear([System.Drawing.Color]::LightGray)
+            $bmp.Save("$outAssets\\$($sizes[$size])",[System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose()
+            $bmp.Dispose()
+          }
+
+      # 8) Package the Appx
       - name: Package UWP App
         shell: pwsh
         run: |
-          $kitsPath = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-          # Look in any SDK version folder under 'bin' for the x64 makeappx.exe
-          $makeappx = Get-ChildItem -Path "$kitsPath\*\x64\makeappx.exe" -ErrorAction SilentlyContinue |
+          $kits = "${env:ProgramFiles(x86)}\\Windows Kits\\10\\bin"
+          $makeappx = Get-ChildItem -Path "$kits\\*\\x64\\makeappx.exe" -ErrorAction SilentlyContinue |
                        Sort-Object DirectoryName -Descending |
                        Select-Object -First 1
-          if (-not $makeappx) {
-            Write-Error "makeappx.exe not found under $kitsPath; cannot package."
-            exit 1
-          }
-          Write-Host "Using makeappx at: $($makeappx.FullName)"
+          if (-not $makeappx) { throw "makeappx.exe not found." }
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 7) Upload the .appx for sideloading
+      # 9) Upload the .appx for sideloading
       - name: Upload UWP Appx
         uses: actions/upload-artifact@v4
         with:
