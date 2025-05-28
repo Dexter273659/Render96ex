@@ -145,15 +145,21 @@ jobs:
             -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
             -FilePath certificate.cer
 
-      # 11) Sign the Appx using PFX
-      - name: Sign the Appx
+            # 11) Sign the Appx using Sign-AppxPackage
+      - name: Sign-AppxPackage
         shell: pwsh
         run: |
-          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1
-          if (-not $signtool) { throw "signtool.exe not found" }
-          & $signtool.FullName sign /fd SHA256 /a /f certificate.pfx /p ci-pass Render96EX.appx
+          $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
+          Sign-AppxPackage -FilePath Render96EX.appx -CertificatePath certificate.pfx -Password $pwd
 
       # 12) Upload signed Appx & certificate
+      - name: Upload Signed Appx & Certificate
+        uses: actions/upload-artifact@v4
+        with:
+          name: Render96EX-UWP
+          path: |
+            Render96EX.appx
+            certificate.cer) Upload signed Appx & certificate
       - name: Upload Signed Appx & Certificate
         uses: actions/upload-artifact@v4
         with:
