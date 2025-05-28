@@ -125,14 +125,12 @@ jobs:
 
       # 10) Generate & import test certificate
       - name: Generate and import Test Certificate
-      - name: Generate and import Test Certificate
         shell: pwsh
         run: |
-          # Create self-signed code signing certificate in LocalMachine store
           $cert = New-SelfSignedCertificate `
             -Type CodeSigningCert `
             -Subject 'CN=Render96EXCert' `
-            -CertStoreLocation Cert:\LocalMachine\My `
+            -CertStoreLocation Cert:\\CurrentUser\\My `
             -KeyExportPolicy Exportable `
             -FriendlyName 'Render96EXCert' `
             -NotAfter (Get-Date).AddYears(5) `
@@ -140,20 +138,20 @@ jobs:
             -HashAlgorithm SHA256
           $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
           Export-PfxCertificate `
-            -Cert "Cert:\LocalMachine\My\$($cert.Thumbprint)" `
+            -Cert "Cert:\\CurrentUser\\My\\$($cert.Thumbprint)" `
             -FilePath certificate.pfx `
             -Password $pwd
           Export-Certificate `
-            -Cert "Cert:\LocalMachine\My\$($cert.Thumbprint)" `
+            -Cert "Cert:\\CurrentUser\\My\\$($cert.Thumbprint)" `
             -FilePath certificate.cer
 
-      # 11) Sign the Appx with the LocalMachine certificate
+      # 11) Sign the Appx using SignTool
       - name: Sign the Appx
         shell: pwsh
         run: |
-          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\\Windows Kits\\10\\bin\\*\\x64\\signtool.exe" -Recurse | Select-Object -First 1
           if (-not $signtool) { throw "signtool.exe not found" }
-          & $signtool.FullName sign /fd SHA256 /n "Render96EXCert" /sm /a Render96EX.appx
+          & $signtool.FullName sign /fd SHA256 /a /f certificate.pfx /p ci-pass Render96EX.appx
 
       # 12) Upload signed Appx & certificate
       - name: Upload Signed Appx & Certificate
