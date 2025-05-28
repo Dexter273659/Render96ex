@@ -8,23 +8,24 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Check out your code
-      - uses: actions/checkout@v4
+      # 1) Check out code
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # 2) Install MSYS2 & cache packages, reuse pre-installed MSYS2
+      # 2) Setup MSYS2 & cache pacman packages
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-          release: false
-          cache: true
+          release: false      # reuse the runner’s MSYS2
+          cache: true         # cache pacman packages
           update: true
           install: |
             git
             curl
-            unzip
+            tar
             make
             mingw-w64-ucrt-x86_64-toolchain
             mingw-w64-ucrt-x86_64-SDL2
@@ -39,12 +40,12 @@ jobs:
       - name: Cache tpl2png build
         uses: actions/cache@v3
         with:
-          path: textures_repo_zip/tpl-tools/tpl2png
+          path: textures_repo/tpl-tools/tpl2png
           key: ${{ runner.os }}-tpl2png
           restore-keys: |
             ${{ runner.os }}-tpl2png
 
-      # 4) Verify you’ve added baserom.us.z64
+      # 4) Verify base ROM is present
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -53,38 +54,40 @@ jobs:
             exit 1
           fi
 
-      # 5) Download textures ZIP & extract
-      - name: Download textures ZIP
+      # 5) Download & extract textures tarball
+      - name: Download and extract Render96EX textures
         shell: msys2 {0}
         run: |
-          curl -L https://github.com/Render96EX/Render96EX-textures/archive/refs/heads/main.zip \
-            -o textures.zip
-          unzip -q textures.zip -d textures_repo_zip
+          curl -L --fail \
+            https://codeload.github.com/Render96EX/Render96EX-textures/tar.gz/main \
+            -o textures.tar.gz
+          tar -xzf textures.tar.gz
+          mv Render96EX-textures-main textures_repo
 
-      # 6) Build tpl2png (only first run)
+      # 6) Build tpl2png (cached after first run)
       - name: Build tpl2png
         shell: msys2 {0}
         run: |
-          if [ ! -f textures_repo_zip/Render96EX-textures-main/tpl-tools/tpl2png ]; then
+          if [ ! -f textures_repo/tpl-tools/tpl2png ]; then
             pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc
-            cd textures_repo_zip/Render96EX-textures-main
+            cd textures_repo
             git clone --depth 1 https://github.com/theofficialgman/tpl-tools.git tpl-tools
             cd tpl-tools
             make
           fi
-          cp textures_repo_zip/Render96EX-textures-main/tpl-tools/tpl2png /usr/bin/
+          cp textures_repo/tpl-tools/tpl2png /usr/bin/
 
       # 7) Convert TPL → PNG
       - name: Convert TPL textures to PNG
         shell: msys2 {0}
         run: |
           mkdir -p textures
-          for f in textures_repo_zip/Render96EX-textures-main/*.tpl; do
+          for f in textures_repo/*.tpl; do
             [ -f "$f" ] && tpl2png "$f" "textures/$(basename "${f%.tpl}.png")"
           done
 
-      # 8) Copy textures into repo root
-      - name: Import Render96EX textures
+      # 8) Import textures into repo
+      - name: Copy Render96EX textures
         shell: msys2 {0}
         run: |
           cp -r textures .
@@ -154,7 +157,8 @@ jobs:
             $g   = [System.Drawing.Graphics]::FromImage($bmp)
             $g.Clear([System.Drawing.Color]::LightGray)
             $bmp.Save("$out\$($map[$s])",[System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose(); $bmp.Dispose()
+            $g.Dispose()
+            $bmp.Dispose()
           }
 
       # 14) Package to .appx
@@ -169,7 +173,7 @@ jobs:
       - name: Add SignTool
         uses: KamaranL/add-signtool-action@v1
 
-      # 16) Generate & export self-signed certificate
+      # 16) Generate & export test certificate
       - name: Generate Test Certificate
         shell: pwsh
         run: |
