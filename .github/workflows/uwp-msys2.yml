@@ -9,8 +9,7 @@ jobs:
 
     steps:
       # 1) Check out your code
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -19,8 +18,8 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-          release: false      # reuse existing MSYS2
-          cache: true         # cache pacman packages
+          release: false
+          cache: true
           update: true
           install: |
             git
@@ -40,12 +39,12 @@ jobs:
       - name: Cache tpl2png build
         uses: actions/cache@v3
         with:
-          path: textures_repo_git/tpl-tools/tpl2png
+          path: textures_repo_zip/tpl-tools/tpl2png
           key: ${{ runner.os }}-tpl2png
           restore-keys: |
             ${{ runner.os }}-tpl2png
 
-      # 4) Verify base ROM
+      # 4) Verify you’ve added baserom.us.z64
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -54,66 +53,55 @@ jobs:
             exit 1
           fi
 
-      # 5) Option A: Shallow clone Render96EX textures
-      - name: Shallow-clone textures repo
-        shell: msys2 {0}
-        run: |
-          git clone --depth 1 --single-branch \
-            https://github.com/Render96EX/Render96EX-textures.git textures_repo_git
-
-      # 6) Option B: Download textures ZIP
+      # 5) Download textures ZIP & extract
       - name: Download textures ZIP
         shell: msys2 {0}
         run: |
-          curl -L \
-            https://github.com/Render96EX/Render96EX-textures/archive/refs/heads/main.zip \
+          curl -L https://github.com/Render96EX/Render96EX-textures/archive/refs/heads/main.zip \
             -o textures.zip
           unzip -q textures.zip -d textures_repo_zip
 
-      # 7) Build tpl2png (skipped if cached)
+      # 6) Build tpl2png (only first run)
       - name: Build tpl2png
         shell: msys2 {0}
         run: |
-          if [ ! -f textures_repo_git/tpl-tools/tpl2png ]; then
+          if [ ! -f textures_repo_zip/Render96EX-textures-main/tpl-tools/tpl2png ]; then
             pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc
-            cd textures_repo_git
+            cd textures_repo_zip/Render96EX-textures-main
             git clone --depth 1 https://github.com/theofficialgman/tpl-tools.git tpl-tools
             cd tpl-tools
             make
-            mkdir -p ../tpl-tools
-            cp tpl2png ../tpl2png
           fi
-          cp textures_repo_git/tpl-tools/tpl2png /usr/bin/
+          cp textures_repo_zip/Render96EX-textures-main/tpl-tools/tpl2png /usr/bin/
 
-      # 8) Convert all .tpl → .png
-      - name: Convert TPL → PNG
+      # 7) Convert TPL → PNG
+      - name: Convert TPL textures to PNG
         shell: msys2 {0}
         run: |
           mkdir -p textures
-          for f in textures_repo_git/*.tpl textures_repo_zip/Render96EX-textures-main/*.tpl; do
+          for f in textures_repo_zip/Render96EX-textures-main/*.tpl; do
             [ -f "$f" ] && tpl2png "$f" "textures/$(basename "${f%.tpl}.png")"
           done
 
-      # 9) Copy Render96EX textures into repo
-      - name: Copy Render96EX textures
+      # 8) Copy textures into repo root
+      - name: Import Render96EX textures
         shell: msys2 {0}
         run: |
           cp -r textures .
 
-      # 10) Build the UWP binaries
+      # 9) Build the UWP binaries
       - name: Build with make
         shell: msys2 {0}
-        run: |
-          make PLATFORM=uwp CONFIG=Release
+        run: make PLATFORM=uwp CONFIG=Release
 
-      # 11) Collect build output
+      # 10) Collect build output
       - name: Collect build output
         shell: msys2 {0}
         run: |
           mkdir -p output
           cp -r build/* output/
 
-      # 12) Normalize executable name
+      # 11) Normalize the executable name
       - name: Normalize executable name
         shell: msys2 {0}
         run: |
@@ -121,7 +109,7 @@ jobs:
           exe=$(find . -type f -iname "*.exe" -print -quit)
           mv "$exe" Render96EX.exe
 
-      # 13) Generate AppxManifest.xml
+      # 12) Generate AppxManifest.xml
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
@@ -151,9 +139,9 @@ jobs:
             '  </Applications>',
             '</Package>'
           )
-          $lines | Out-File output/AppxManifest.xml -Encoding utf8
+          $lines | Out-File output\AppxManifest.xml -Encoding utf8
 
-      # 14) Generate placeholder Assets
+      # 13) Generate placeholder Assets
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
@@ -169,7 +157,7 @@ jobs:
             $g.Dispose(); $bmp.Dispose()
           }
 
-      # 15) Package to .appx
+      # 14) Package to .appx
       - name: Package UWP App
         shell: pwsh
         run: |
@@ -177,11 +165,11 @@ jobs:
           $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -Recurse | Sort-Object DirectoryName -Descending | Select-Object -First 1
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 16) Add SignTool to PATH
+      # 15) Add SignTool to PATH
       - name: Add SignTool
         uses: KamaranL/add-signtool-action@v1
 
-      # 17) Generate & export self-signed certificate
+      # 16) Generate & export self-signed certificate
       - name: Generate Test Certificate
         shell: pwsh
         run: |
@@ -190,13 +178,13 @@ jobs:
           Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.pfx -Password $pwd
           Export-Certificate   -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.cer
 
-      # 18) Sign the .appx with timestamp
+      # 17) Sign the .appx with timestamp
       - name: Sign the Appx
         shell: pwsh
         run: |
           signtool sign /fd SHA256 /f certificate.pfx /p ci-pass /tr http://timestamp.digicert.com /td SHA256 Render96EX.appx
 
-      # 19) Upload signed .appx & certificate
+      # 18) Upload signed .appx & certificate
       - name: Upload Signed Appx & Certificate
         uses: actions/upload-artifact@v4
         with:
