@@ -32,7 +32,7 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Ensure your legally‐owned ROM is present
+      # 3) Verify base ROM
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -41,107 +41,142 @@ jobs:
             exit 1
           fi
 
-      # 4) Build the UWP binaries via Makefile
+      # 4) Clone Render96EX textures and build tpl2png
+      - name: Clone textures & build tpl2png
+        shell: msys2 {0}
+        run: |
+          git clone https://github.com/Render96EX/Render96EX-textures.git textures_repo
+          pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc
+          cd textures_repo
+          git clone https://github.com/theofficialgman/tpl-tools.git
+          cd tpl-tools
+          make
+          cp tpl2png /usr/bin/
+
+      # 5) Convert TPL → PNG
+      - name: Convert TPL textures to PNG
+        shell: msys2 {0}
+        run: |
+          mkdir -p textures
+          for f in textures_repo/*.tpl; do
+            tpl2png "$f" "textures/$(basename "${f%.tpl}.png")"
+          done
+
+      # 6) Copy Render96EX textures into repo
+      - name: Copy Render96EX textures
+        shell: msys2 {0}
+        run: |
+          cp -r textures .
+
+      # 7) Build the UWP binaries
       - name: Build with make
         shell: msys2 {0}
         run: make PLATFORM=uwp CONFIG=Release
 
-      # 5) Collect build output
+      # 8) Collect build output
       - name: Collect build output
         shell: msys2 {0}
         run: |
           mkdir -p output
           cp -r build/* output/
 
-      # 6) Normalize the executable filename
+      # 9) Normalize the executable name
       - name: Normalize executable name
         shell: msys2 {0}
         run: |
-          set -e
           cd output
           exe=$(find . -type f -iname "*.exe" -print -quit)
-          if [ -z "$exe" ]; then
-            echo "::error::No .exe found under output"
-            exit 1
-          fi
           mv "$exe" Render96EX.exe
 
-      # 7) Generate a valid AppxManifest.xml in output/
+      # 10) Generate AppxManifest.xml
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
-          $lines = @(
-            '<?xml version="1.0" encoding="utf-8"?>',
-            '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">',
-            '  <Identity Name="com.KaydenBerry.Render96EX" Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6" Version="1.0.0.0" />',
-            '  <Properties>',
-            '    <DisplayName>Render96EX</DisplayName>',
-            '    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>',
-            '    <Description>Super Mario 64 UWP port</Description>',
-            '    <Logo>Assets/StoreLogo.png</Logo>',
-            '  </Properties>',
-            '  <Dependencies>',
-            '    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.26100.0" />',
-            '  </Dependencies>',
-            '  <Resources>',
-            '    <Resource Language="en-us" />',
-            '  </Resources>',
-            '  <Capabilities>',
-            '    <rescap:Capability Name="runFullTrust" />',
-            '  </Capabilities>',
-            '  <Applications>',
-            '    <Application Id="App" Executable="Render96EX.exe" EntryPoint="Windows.FullTrustApplication">',
-            '      <uap:VisualElements DisplayName="Render96EX" Square150x150Logo="Assets/Square150x150Logo.png" Square44x44Logo="Assets/Square44x44Logo.png" Description="Super Mario 64 UWP port" BackgroundColor="transparent" />',
-            '    </Application>',
-            '  </Applications>',
-            '</Package>'
-          )
-          $lines | Out-File output\AppxManifest.xml -Encoding utf8
+          $xml = @'
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap rescap">
+  <Identity Name="com.KaydenBerry.Render96EX"
+            Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
+            Version="1.0.0.0" />
+  <Properties>
+    <DisplayName>Render96EX</DisplayName>
+    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
+    <Description>Super Mario 64 UWP port</Description>
+    <Logo>Assets/StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal"
+                        MinVersion="10.0.0.0"
+                        MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+  <Applications>
+    <Application Id="App"
+                 Executable="Render96EX.exe"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Render96EX"
+                          Square150x150Logo="Assets/Square150x150Logo.png"
+                          Square44x44Logo="Assets/Square44x44Logo.png"
+                          Description="Super Mario 64 UWP port"
+                          BackgroundColor="transparent" />
+    </Application>
+  </Applications>
+</Package>
+'@
+          $xml | Out-File output\AppxManifest.xml -Encoding utf8
 
-      # 8) Generate placeholder Assets (simple gray PNGs)
+      # 11) Generate placeholder store assets
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
           Add-Type -AssemblyName System.Drawing
-          $out = "output\Assets"
-          if (!(Test-Path $out)) { New-Item -ItemType Directory -Path $out | Out-Null }
-          $map = @{44='Square44x44Logo.png'; 150='Square150x150Logo.png'; 50='StoreLogo.png'}
-          foreach ($size in $map.Keys) {
-            $bmp = New-Object System.Drawing.Bitmap($size, $size)
-            $g   = [System.Drawing.Graphics]::FromImage($bmp)
+          $out="output\Assets"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $map=@{44='Square44x44Logo.png';150='Square150x150Logo.png';50='StoreLogo.png'}
+          foreach($s in $map.Keys){
+            $bmp=New-Object System.Drawing.Bitmap($s,$s)
+            $g=[System.Drawing.Graphics]::FromImage($bmp)
             $g.Clear([System.Drawing.Color]::LightGray)
-            $bmp.Save("$out\$($map[$size])",[System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose()
-            $bmp.Dispose()
+            $bmp.Save("$out\$($map[$s])",[System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose();$bmp.Dispose()
           }
 
-      # 9) Package the folder into a UWP .appx
+      # 12) Package to .appx
       - name: Package UWP App
         shell: pwsh
         run: |
-          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-          $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -Recurse | Sort-Object DirectoryName -Descending | Select-Object -First 1
-          if (-not $makeappx) { throw "makeappx.exe not found" }
+          $kits="${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $makeappx=Get-ChildItem "$kits\*\x64\makeappx.exe" -Recurse |
+                     Sort-Object DirectoryName -Descending |
+                     Select-Object -First 1
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 10) Ensure SignTool is available
-      - name: Add SignTool
-        uses: microsoft/add-signtool-action@v1
+      # 13) Add SignTool to PATH
+      - name: Add SignTool Action
+        uses: KamaranL/add-signtool-action@v1
 
-      # 11) Generate & export a self-signed code-signing certificate
+      # 14) Generate & export self-signed certificate
       - name: Generate Test Certificate
         shell: pwsh
         run: |
-          $cert = New-SelfSignedCertificate `
+          $cert=New-SelfSignedCertificate `
             -Type CodeSigningCert `
-            -Subject 'CN=Render96EX Cert' `
+            -Subject "CN=Render96EX Cert" `
             -CertStoreLocation Cert:\CurrentUser\My `
             -KeyExportPolicy Exportable `
-            -FriendlyName 'Render96EXCert' `
+            -FriendlyName "Render96EXCert" `
             -NotAfter (Get-Date).AddYears(5) `
             -KeyAlgorithm RSA `
             -HashAlgorithm SHA256
-          $pwd = ConvertTo-SecureString '${{ secrets.PFX_PASSWORD }}' -AsPlainText -Force
+          $pwd=ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
           Export-PfxCertificate `
             -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
             -FilePath certificate.pfx `
@@ -150,13 +185,18 @@ jobs:
             -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
             -FilePath certificate.cer
 
-      # 12) Sign the Appx with the generated PFX
+      # 15) Sign the .appx with timestamp
       - name: Sign the Appx
         shell: pwsh
         run: |
-          signtool sign /fd SHA256 /f certificate.pfx /p ${{ secrets.PFX_PASSWORD }} Render96EX.appx
+          signtool sign /fd SHA256 \
+            /f certificate.pfx \
+            /p ci-pass \
+            /tr http://timestamp.digicert.com \
+            /td SHA256 \
+            Render96EX.appx
 
-      # 13) Upload the signed package & public certificate
+      # 16) Upload signed .appx & certificate
       - name: Upload Signed Appx & Certificate
         uses: actions/upload-artifact@v4
         with:
