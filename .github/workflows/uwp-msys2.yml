@@ -32,7 +32,7 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Check for baserom.us.z64
+      # 3) Verify base ROM
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -66,7 +66,7 @@ jobs:
           fi
           mv "$exe" Render96EX.exe
 
-      # 7) Generate AppxManifest.xml in output/
+      # 7) Generate AppxManifest.xml
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
@@ -111,7 +111,8 @@ jobs:
             $g   = [System.Drawing.Graphics]::FromImage($bmp)
             $g.Clear([System.Drawing.Color]::LightGray)
             $bmp.Save("$out\$($map[$size])",[System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose(); $bmp.Dispose()
+            $g.Dispose()
+            $bmp.Dispose()
           }
 
       # 9) Package UWP App
@@ -119,40 +120,39 @@ jobs:
         shell: pwsh
         run: |
           $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-          $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -ErrorAction SilentlyContinue | Sort-Object DirectoryName -Descending | Select-Object -First 1
+          $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -Recurse | Sort-Object DirectoryName -Descending | Select-Object -First 1
           if (-not $makeappx) { throw "makeappx.exe not found" }
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 10) Generate code-signing certificate (export only)
-      - name: Generate Test Certificate
+      # 10) Generate & import test certificate
+      - name: Generate and import Test Certificate
         shell: pwsh
         run: |
           $cert = New-SelfSignedCertificate `
             -Type CodeSigningCert `
-            -Subject 'CN=Kayden Berry' `
-            -CertStoreLocation Cert:\CurrentUser\My `
+            -Subject 'CN=Render96EX Cert' `
+            -CertStoreLocation Cert:\LocalMachine\My `
             -KeyExportPolicy Exportable `
             -FriendlyName 'Render96EXCert' `
             -NotAfter (Get-Date).AddYears(5) `
             -KeyAlgorithm RSA `
             -HashAlgorithm SHA256
           $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
-          # Export only the PFX and public CER for sideload trust
           Export-PfxCertificate `
-            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -Cert "Cert:\LocalMachine\My\$($cert.Thumbprint)" `
             -FilePath certificate.pfx `
             -Password $pwd
           Export-Certificate `
-            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -Cert "Cert:\LocalMachine\My\$($cert.Thumbprint)" `
             -FilePath certificate.cer
 
-      # 11) Sign the Appx package
+      # 11) Sign the Appx with the LocalMachine cert
       - name: Sign the Appx
         shell: pwsh
         run: |
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1
           if (-not $signtool) { throw "signtool.exe not found" }
-          & $signtool.FullName sign /fd SHA256 /f certificate.pfx /p ci-pass Render96EX.appx
+          & $signtool.FullName sign /fd SHA256 /n 'Render96EXCert' /sm Render96EX.appx
 
       # 12) Upload signed Appx & certificate
       - name: Upload Signed Appx & Certificate
