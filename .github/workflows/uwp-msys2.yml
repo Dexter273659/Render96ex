@@ -71,7 +71,8 @@ jobs:
       # 7) Build the UWP binaries
       - name: Build with make
         shell: msys2 {0}
-        run: make PLATFORM=uwp CONFIG=Release
+        run: |
+          make PLATFORM=uwp CONFIG=Release
 
       # 8) Collect build output
       - name: Collect build output
@@ -88,7 +89,7 @@ jobs:
           exe=$(find . -type f -iname "*.exe" -print -quit)
           mv "$exe" Render96EX.exe
 
-      # 10) Generate AppxManifest.xml
+      # 10) Generate AppxManifest.xml in output/
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
@@ -131,32 +132,32 @@ jobs:
   </Applications>
 </Package>
 '@
-          $xml | Out-File output\AppxManifest.xml -Encoding utf8
+          $xml | Out-File output/AppxManifest.xml -Encoding utf8
 
       # 11) Generate placeholder store assets
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
           Add-Type -AssemblyName System.Drawing
-          $out="output\Assets"
+          $out = "output\Assets"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
-          $map=@{44='Square44x44Logo.png';150='Square150x150Logo.png';50='StoreLogo.png'}
-          foreach($s in $map.Keys){
-            $bmp=New-Object System.Drawing.Bitmap($s,$s)
-            $g=[System.Drawing.Graphics]::FromImage($bmp)
+          $map = @{44='Square44x44Logo.png';150='Square150x150Logo.png';50='StoreLogo.png'}
+          foreach ($s in $map.Keys) {
+            $bmp = New-Object System.Drawing.Bitmap($s, $s)
+            $g   = [System.Drawing.Graphics]::FromImage($bmp)
             $g.Clear([System.Drawing.Color]::LightGray)
             $bmp.Save("$out\$($map[$s])",[System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose();$bmp.Dispose()
+            $g.Dispose(); $bmp.Dispose()
           }
 
       # 12) Package to .appx
       - name: Package UWP App
         shell: pwsh
         run: |
-          $kits="${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-          $makeappx=Get-ChildItem "$kits\*\x64\makeappx.exe" -Recurse |
-                     Sort-Object DirectoryName -Descending |
-                     Select-Object -First 1
+          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+          $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -Recurse |
+                       Sort-Object DirectoryName -Descending |
+                       Select-Object -First 1
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
       # 13) Add SignTool to PATH
@@ -167,7 +168,7 @@ jobs:
       - name: Generate Test Certificate
         shell: pwsh
         run: |
-          $cert=New-SelfSignedCertificate `
+          $cert = New-SelfSignedCertificate `
             -Type CodeSigningCert `
             -Subject "CN=Render96EX Cert" `
             -CertStoreLocation Cert:\CurrentUser\My `
@@ -176,7 +177,7 @@ jobs:
             -NotAfter (Get-Date).AddYears(5) `
             -KeyAlgorithm RSA `
             -HashAlgorithm SHA256
-          $pwd=ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
+          $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
           Export-PfxCertificate `
             -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
             -FilePath certificate.pfx `
@@ -189,11 +190,11 @@ jobs:
       - name: Sign the Appx
         shell: pwsh
         run: |
-          signtool sign /fd SHA256 \
-            /f certificate.pfx \
-            /p ci-pass \
-            /tr http://timestamp.digicert.com \
-            /td SHA256 \
+          signtool sign /fd SHA256 `
+            /f certificate.pfx `
+            /p ci-pass `
+            /tr http://timestamp.digicert.com `
+            /td SHA256 `
             Render96EX.appx
 
       # 16) Upload signed .appx & certificate
