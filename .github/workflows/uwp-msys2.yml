@@ -32,7 +32,7 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Check for baserom.us.z64
+      # 3) Ensure your legally‐owned ROM is present
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
 
-      # 4) Build the UWP binaries
+      # 4) Build the UWP binaries via Makefile
       - name: Build with make
         shell: msys2 {0}
         run: make PLATFORM=uwp CONFIG=Release
@@ -66,7 +66,7 @@ jobs:
           fi
           mv "$exe" Render96EX.exe
 
-      # 7) Generate AppxManifest.xml in output/
+      # 7) Generate a valid AppxManifest.xml in output/
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
@@ -96,9 +96,9 @@ jobs:
             '  </Applications>',
             '</Package>'
           )
-          $lines | Out-File output/AppxManifest.xml -Encoding utf8
+          $lines | Out-File output\AppxManifest.xml -Encoding utf8
 
-      # 8) Generate placeholder Assets
+      # 8) Generate placeholder Assets (simple gray PNGs)
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
@@ -111,10 +111,11 @@ jobs:
             $g   = [System.Drawing.Graphics]::FromImage($bmp)
             $g.Clear([System.Drawing.Color]::LightGray)
             $bmp.Save("$out\$($map[$size])",[System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose(); $bmp.Dispose()
+            $g.Dispose()
+            $bmp.Dispose()
           }
 
-      # 9) Package UWP App
+      # 9) Package the folder into a UWP .appx
       - name: Package UWP App
         shell: pwsh
         run: |
@@ -123,45 +124,39 @@ jobs:
           if (-not $makeappx) { throw "makeappx.exe not found" }
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 10) Generate & import test certificate
-      - name: Generate and import Test Certificate
+      # 10) Ensure SignTool is available
+      - name: Add SignTool
+        uses: microsoft/add-signtool-action@v1
+
+      # 11) Generate & export a self-signed code-signing certificate
+      - name: Generate Test Certificate
         shell: pwsh
         run: |
           $cert = New-SelfSignedCertificate `
             -Type CodeSigningCert `
-            -Subject 'CN=Render96EXCert' `
-            -CertStoreLocation Cert:\\CurrentUser\\My `
+            -Subject 'CN=Render96EX Cert' `
+            -CertStoreLocation Cert:\CurrentUser\My `
             -KeyExportPolicy Exportable `
             -FriendlyName 'Render96EXCert' `
             -NotAfter (Get-Date).AddYears(5) `
             -KeyAlgorithm RSA `
             -HashAlgorithm SHA256
-          $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
+          $pwd = ConvertTo-SecureString '${{ secrets.PFX_PASSWORD }}' -AsPlainText -Force
           Export-PfxCertificate `
-            -Cert "Cert:\\CurrentUser\\My\\$($cert.Thumbprint)" `
+            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
             -FilePath certificate.pfx `
             -Password $pwd
           Export-Certificate `
-            -Cert "Cert:\\CurrentUser\\My\\$($cert.Thumbprint)" `
+            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
             -FilePath certificate.cer
 
-      # 11) Sign the Appx using SignTool
+      # 12) Sign the Appx with the generated PFX
       - name: Sign the Appx
         shell: pwsh
         run: |
-          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1
-          if (-not $signtool) { throw "signtool.exe not found" }
-          # Sign directly from PFX, include a timestamp
-          & $signtool.FullName sign /fd SHA256 /f certificate.pfx /p ci-pass /tr http://timestamp.digicert.com /td SHA256 Render96EX.appx
+          signtool sign /fd SHA256 /f certificate.pfx /p ${{ secrets.PFX_PASSWORD }} Render96EX.appx
 
-      # 12) Upload signed Appx & certificate
-      - name: Upload Signed Appx & Certificate
-        uses: actions/upload-artifact@v4
-        with:
-          name: Render96EX-UWP
-          path: |
-            Render96EX.appx
-            certificate.cer signed Appx & certificate
+      # 13) Upload the signed package & public certificate
       - name: Upload Signed Appx & Certificate
         uses: actions/upload-artifact@v4
         with:
