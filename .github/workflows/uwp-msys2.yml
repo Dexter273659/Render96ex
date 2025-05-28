@@ -54,15 +54,15 @@ jobs:
             exit 1
           fi
 
-      # 5) Download & extract textures tarball
-      - name: Download and extract Render96EX textures
+      # 5) Download & extract the official Render96 HD Texture Pack
+      - name: Download and extract HD texture pack
         shell: msys2 {0}
         run: |
           curl -L --fail \
-            https://codeload.github.com/Render96EX/Render96EX-textures/tar.gz/main \
+            https://codeload.github.com/pokeheadroom/RENDER96-HD-TEXTURE-PACK/tar.gz/master \
             -o textures.tar.gz
           tar -xzf textures.tar.gz
-          mv Render96EX-textures-main textures_repo
+          mv RENDER96-HD-TEXTURE-PACK-master textures_repo
 
       # 6) Build tpl2png (cached after first run)
       - name: Build tpl2png
