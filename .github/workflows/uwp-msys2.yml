@@ -123,23 +123,36 @@ jobs:
           if (-not $makeappx) { throw "makeappx.exe not found" }
           & $makeappx.FullName pack /d output /p Render96EX.appx
 
-      # 10) Generate & import test certificate
+      # 10) Generate code-signing certificate (export only)
       - name: Generate Test Certificate
         shell: pwsh
         run: |
-          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=Kayden Berry' -CertStoreLocation Cert:\CurrentUser\My -KeyExportPolicy Exportable -FriendlyName 'Render96EXCert' -NotAfter (Get-Date).AddYears(5) -KeyAlgorithm RSA -HashAlgorithm SHA256
+          $cert = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject 'CN=Kayden Berry' `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -KeyExportPolicy Exportable `
+            -FriendlyName 'Render96EXCert' `
+            -NotAfter (Get-Date).AddYears(5) `
+            -KeyAlgorithm RSA `
+            -HashAlgorithm SHA256
           $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
-          Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.pfx -Password $pwd
-          Export-Certificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.cer
-          Import-PfxCertificate -FilePath certificate.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $pwd
+          # Export only the PFX and public CER for sideload trust
+          Export-PfxCertificate `
+            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -FilePath certificate.pfx `
+            -Password $pwd
+          Export-Certificate `
+            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -FilePath certificate.cer
 
-      # 11) Sign the Appx with timestamp
+      # 11) Sign the Appx package
       - name: Sign the Appx
         shell: pwsh
         run: |
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1
           if (-not $signtool) { throw "signtool.exe not found" }
-          & $signtool.FullName sign /fd SHA256 /a /f certificate.pfx /p ci-pass /tr http://timestamp.digicert.com /td SHA256 Render96EX.appx
+          & $signtool.FullName sign /fd SHA256 /f certificate.pfx /p ci-pass Render96EX.appx
 
       # 12) Upload signed Appx & certificate
       - name: Upload Signed Appx & Certificate
