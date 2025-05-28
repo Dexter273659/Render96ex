@@ -125,12 +125,14 @@ jobs:
 
       # 10) Generate & import test certificate
       - name: Generate and import Test Certificate
+      - name: Generate and import Test Certificate
         shell: pwsh
         run: |
+          # Create self-signed code signing certificate in LocalMachine store
           $cert = New-SelfSignedCertificate `
             -Type CodeSigningCert `
             -Subject 'CN=Render96EXCert' `
-            -CertStoreLocation Cert:\CurrentUser\My `
+            -CertStoreLocation Cert:\LocalMachine\My `
             -KeyExportPolicy Exportable `
             -FriendlyName 'Render96EXCert' `
             -NotAfter (Get-Date).AddYears(5) `
@@ -138,28 +140,22 @@ jobs:
             -HashAlgorithm SHA256
           $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
           Export-PfxCertificate `
-            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -Cert "Cert:\LocalMachine\My\$($cert.Thumbprint)" `
             -FilePath certificate.pfx `
             -Password $pwd
           Export-Certificate `
-            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -Cert "Cert:\LocalMachine\My\$($cert.Thumbprint)" `
             -FilePath certificate.cer
 
-            # 11) Sign the Appx using Sign-AppxPackage
-      - name: Sign-AppxPackage
+      # 11) Sign the Appx with the LocalMachine certificate
+      - name: Sign the Appx
         shell: pwsh
         run: |
-          $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
-          Sign-AppxPackage -FilePath Render96EX.appx -CertificatePath certificate.pfx -Password $pwd
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -Recurse | Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe not found" }
+          & $signtool.FullName sign /fd SHA256 /n "Render96EXCert" /sm /a Render96EX.appx
 
       # 12) Upload signed Appx & certificate
-      - name: Upload Signed Appx & Certificate
-        uses: actions/upload-artifact@v4
-        with:
-          name: Render96EX-UWP
-          path: |
-            Render96EX.appx
-            certificate.cer) Upload signed Appx & certificate
       - name: Upload Signed Appx & Certificate
         uses: actions/upload-artifact@v4
         with:
