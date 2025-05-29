@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
 
-      # 5) Download & extract the HD texture pack
+      # 5) Download & extract the HD texture pack (main branch)
       - name: Download and extract HD textures
         shell: msys2 {0}
         run: |
@@ -64,15 +64,15 @@ jobs:
           tar -xzf textures.tar.gz
           mv RENDER96-HD-TEXTURE-PACK-main textures_repo
 
-      # 6) Download & extract tpl-tools
+      # 6) Download & extract tpl-tools (master branch)
       - name: Download and extract tpl-tools
         shell: msys2 {0}
         run: |
           curl -L --fail \
-            https://codeload.github.com/theofficialgman/tpl-tools/tar.gz/main \
+            https://codeload.github.com/theofficialgman/tpl-tools/tar.gz/master \
             -o tpl-tools.tar.gz
           tar -xzf tpl-tools.tar.gz
-          mv tpl-tools-main textures_repo/tpl-tools
+          mv tpl-tools-master textures_repo/tpl-tools
 
       # 7) Build tpl2png (only on first run)
       - name: Build tpl2png
