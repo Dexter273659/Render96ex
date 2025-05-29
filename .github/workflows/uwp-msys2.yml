@@ -14,13 +14,13 @@ jobs:
         with:
           submodules: recursive
 
-      # 2) Setup MSYS2 & cache pacman packages
+      # 2) Setup MSYS2 & install build tools
       - name: Setup MSYS2 & install build tools
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-          release: false      # reuse the runner’s MSYS2 install
-          cache: true         # cache pacman packages between runs
+          release: false
+          cache: true
           update: true
           install: |
             git
@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
 
-      # 5) Download & extract the HD texture pack (tarball, main branch)
+      # 5) Download & extract the HD texture pack
       - name: Download and extract HD textures
         shell: msys2 {0}
         run: |
@@ -64,7 +64,7 @@ jobs:
           tar -xzf textures.tar.gz
           mv RENDER96-HD-TEXTURE-PACK-main textures_repo
 
-      # 6) Download & extract tpl-tools (tarball, main branch)
+      # 6) Download & extract tpl-tools
       - name: Download and extract tpl-tools
         shell: msys2 {0}
         run: |
@@ -174,29 +174,52 @@ jobs:
         shell: pwsh
         run: |
           $kits = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-          $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -Recurse | Sort-Object DirectoryName -Descending | Select-Object -First 1
+          $makeappx = Get-ChildItem "$kits\*\x64\makeappx.exe" -Recurse |
+                      Sort-Object DirectoryName -Descending |
+                      Select-Object -First 1
           & $makeappx.FullName pack /d output /p Render96EX.appx
+
+      # ─── Signing steps ─────────────────────────────────────────────────────────
 
       # 16) Add SignTool to PATH
       - name: Add SignTool
         uses: KamaranL/add-signtool-action@v1
 
-      # 17) Generate & export self-signed certificate
+      # 17) Generate a self-signed certificate matching your Publisher ID
       - name: Generate Test Certificate
         shell: pwsh
         run: |
-          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=Render96EX Cert" -CertStoreLocation Cert:\CurrentUser\My -KeyExportPolicy Exportable -FriendlyName "Render96EXCert" -NotAfter (Get-Date).AddYears(5) -KeyAlgorithm RSA -HashAlgorithm SHA256
+          $publisher = 'CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6'
+          $cert = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject $publisher `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -KeyExportPolicy Exportable `
+            -FriendlyName 'Render96EXCert' `
+            -HashAlgorithm SHA256 `
+            -NotAfter (Get-Date).AddYears(5)
           $pwd = ConvertTo-SecureString 'ci-pass' -AsPlainText -Force
-          Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.pfx -Password $pwd
-          Export-Certificate   -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.cer
+          Export-PfxCertificate `
+            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -FilePath certificate.pfx `
+            -Password $pwd
+          Export-Certificate `
+            -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -FilePath certificate.cer
 
-      # 18) Sign the .appx with timestamp
+      # 18) Sign the Appx with SHA-256 & DigiCert timestamp
       - name: Sign the Appx
         shell: pwsh
         run: |
-          signtool sign /fd SHA256 /f certificate.pfx /p ci-pass /tr http://timestamp.digicert.com /td SHA256 Render96EX.appx
+          signtool sign `
+            /fd SHA256 `
+            /f certificate.pfx `
+            /p ci-pass `
+            /tr http://timestamp.digicert.com `
+            /td SHA256 `
+            Render96EX.appx
 
-      # 19) Upload signed .appx & certificate
+      # 19) Upload signed .appx & public cert
       - name: Upload Signed Appx & Certificate
         uses: actions/upload-artifact@v4
         with:
