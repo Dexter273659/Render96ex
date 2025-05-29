@@ -36,16 +36,7 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Cache tpl2png build output
-      - name: Cache tpl2png build
-        uses: actions/cache@v3
-        with:
-          path: textures_repo/tpl-tools/tpl2png
-          key: ${{ runner.os }}-tpl2png
-          restore-keys: |
-            ${{ runner.os }}-tpl2png
-
-      # 4) Verify your legally-owned ROM is present
+      # 3) Verify your legally-owned ROM is present
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -54,66 +45,20 @@ jobs:
             exit 1
           fi
 
-      # 5) Download & extract the HD texture pack (main branch)
-      - name: Download and extract HD textures
-        shell: msys2 {0}
-        run: |
-          curl -L --fail \
-            https://codeload.github.com/pokeheadroom/RENDER96-HD-TEXTURE-PACK/tar.gz/main \
-            -o textures.tar.gz
-          tar -xzf textures.tar.gz
-          mv RENDER96-HD-TEXTURE-PACK-main textures_repo
-
-      # 6) Download & extract tpl-tools (master branch)
-      - name: Download and extract tpl-tools
-        shell: msys2 {0}
-        run: |
-          curl -L --fail \
-            https://codeload.github.com/theofficialgman/tpl-tools/tar.gz/master \
-            -o tpl-tools.tar.gz
-          tar -xzf tpl-tools.tar.gz
-          mv tpl-tools-master textures_repo/tpl-tools
-
-      # 7) Build tpl2png (only on first run)
-      - name: Build tpl2png
-        shell: msys2 {0}
-        run: |
-          if [ ! -f textures_repo/tpl-tools/tpl2png ]; then
-            pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc
-            cd textures_repo/tpl-tools
-            make
-          fi
-          cp textures_repo/tpl-tools/tpl2png /usr/bin/
-
-      # 8) Convert all .tpl → .png
-      - name: Convert TPL textures to PNG
-        shell: msys2 {0}
-        run: |
-          mkdir -p textures
-          for f in textures_repo/*.tpl; do
-            [ -f "$f" ] && tpl2png "$f" "textures/$(basename "${f%.tpl}.png")"
-          done
-
-      # 9) Copy textures into your repo root
-      - name: Copy Render96EX textures
-        shell: msys2 {0}
-        run: |
-          cp -r textures .
-
-      # 10) Build the UWP binaries
+      # 4) Build the UWP binaries
       - name: Build with make
         shell: msys2 {0}
         run: |
           make PLATFORM=uwp CONFIG=Release
 
-      # 11) Collect build output
+      # 5) Collect build output
       - name: Collect build output
         shell: msys2 {0}
         run: |
           mkdir -p output
           cp -r build/* output/
 
-      # 12) Normalize the executable name
+      # 6) Normalize the executable name
       - name: Normalize executable name
         shell: msys2 {0}
         run: |
@@ -121,39 +66,53 @@ jobs:
           exe=$(find . -type f -iname "*.exe" -print -quit)
           mv "$exe" Render96EX.exe
 
-      # 13) Generate AppxManifest.xml
+      # 7) Generate AppxManifest.xml
       - name: Generate AppxManifest.xml
         shell: pwsh
         run: |
-          $lines = @(
-            '<?xml version="1.0" encoding="utf-8"?>',
-            '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" IgnorableNamespaces="uap rescap">',
-            '  <Identity Name="com.KaydenBerry.Render96EX" Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6" Version="1.0.0.0" />',
-            '  <Properties>',
-            '    <DisplayName>Render96EX</DisplayName>',
-            '    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>',
-            '    <Description>Super Mario 64 UWP port</Description>',
-            '    <Logo>Assets/StoreLogo.png</Logo>',
-            '  </Properties>',
-            '  <Dependencies>',
-            '    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.26100.0" />',
-            '  </Dependencies>',
-            '  <Resources>',
-            '    <Resource Language="en-us" />',
-            '  </Resources>',
-            '  <Capabilities>',
-            '    <rescap:Capability Name="runFullTrust" />',
-            '  </Capabilities>',
-            '  <Applications>',
-            '    <Application Id="App" Executable="Render96EX.exe" EntryPoint="Windows.FullTrustApplication">',
-            '      <uap:VisualElements DisplayName="Render96EX" Square150x150Logo="Assets/Square150x150Logo.png" Square44x44Logo="Assets/Square44x44Logo.png" Description="Super Mario 64 UWP port" BackgroundColor="transparent" />',
-            '    </Application>',
-            '  </Applications>',
-            '</Package>'
-          )
-          $lines | Out-File output\AppxManifest.xml -Encoding utf8
+          $xml = @"
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap rescap">
+  <Identity Name="com.KaydenBerry.Render96EX"
+            Publisher="CN=841AFD4F-58DD-4BB8-A46A-FFE9B9E0B8E6"
+            Version="1.0.0.0" />
+  <Properties>
+    <DisplayName>Render96EX</DisplayName>
+    <PublisherDisplayName>Kayden Berry</PublisherDisplayName>
+    <Description>Super Mario 64 UWP port</Description>
+    <Logo>Assets/StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal"
+                        MinVersion="10.0.0.0"
+                        MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+  <Applications>
+    <Application Id="App"
+                 Executable="Render96EX.exe"
+                 EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Render96EX"
+                          Square150x150Logo="Assets/Square150x150Logo.png"
+                          Square44x44Logo="Assets/Square44x44Logo.png"
+                          Description="Super Mario 64 UWP port"
+                          BackgroundColor="transparent" />
+    </Application>
+  </Applications>
+</Package>
+"@
 
-      # 14) Generate placeholder Assets
+          $xml | Out-File output\AppxManifest.xml -Encoding utf8
+
+      # 8) Generate placeholder Assets (logos)
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
@@ -161,15 +120,15 @@ jobs:
           $out = "output\Assets"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
           $map = @{44='Square44x44Logo.png';150='Square150x150Logo.png';50='StoreLogo.png'}
-          foreach ($s in $map.Keys) {
-            $bmp = New-Object System.Drawing.Bitmap($s,$s)
-            $g   = [System.Drawing.Graphics]::FromImage($bmp)
-            $g.Clear([System.Drawing.Color]::LightGray)
-            $bmp.Save("$out\$($map[$s])",[System.Drawing.Imaging.ImageFormat]::Png)
-            $g.Dispose(); $bmp.Dispose()
+          foreach ($size in $map.Keys) {
+            $bmp = New-Object System.Drawing.Bitmap($size,$size)
+            $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+            $gfx.Clear([System.Drawing.Color]::LightGray)
+            $bmp.Save("$out\$($map[$size])",[System.Drawing.Imaging.ImageFormat]::Png)
+            $gfx.Dispose(); $bmp.Dispose()
           }
 
-      # 15) Package into a UWP .appx
+      # 9) Package into a UWP .appx
       - name: Package UWP App
         shell: pwsh
         run: |
@@ -181,11 +140,11 @@ jobs:
 
       # ─── Signing steps ─────────────────────────────────────────────────────────
 
-      # 16) Add SignTool to PATH
+      # 10) Add SignTool to PATH
       - name: Add SignTool
         uses: KamaranL/add-signtool-action@v1
 
-      # 17) Generate a self-signed certificate matching your Publisher ID
+      # 11) Generate a self-signed certificate matching your Publisher ID
       - name: Generate Test Certificate
         shell: pwsh
         run: |
@@ -207,7 +166,7 @@ jobs:
             -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
             -FilePath certificate.cer
 
-      # 18) Sign the Appx with SHA-256 & DigiCert timestamp
+      # 12) Sign the Appx with SHA-256 & DigiCert timestamp
       - name: Sign the Appx
         shell: pwsh
         run: |
@@ -219,7 +178,7 @@ jobs:
             /td SHA256 `
             Render96EX.appx
 
-      # 19) Upload signed .appx & public cert
+      # 13) Upload signed .appx & public cert
       - name: Upload Signed Appx & Certificate
         uses: actions/upload-artifact@v4
         with:
