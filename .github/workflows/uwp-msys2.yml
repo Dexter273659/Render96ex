@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1) Checkout your code
+      # 1) Check out your code
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -19,8 +19,8 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-          release: false      # reuse the runner’s MSYS2
-          cache: true         # cache pacman packages
+          release: false      # reuse the runner’s MSYS2 install
+          cache: true         # cache pacman packages between runs
           update: true
           install: |
             git
@@ -36,7 +36,16 @@ jobs:
             mingw-w64-ucrt-x86_64-glew
             mingw-w64-ucrt-x86_64-pkg-config
 
-      # 3) Ensure baserom.us.z64 is present
+      # 3) Cache tpl2png build output
+      - name: Cache tpl2png build
+        uses: actions/cache@v3
+        with:
+          path: textures_repo/tpl-tools/tpl2png
+          key: ${{ runner.os }}-tpl2png
+          restore-keys: |
+            ${{ runner.os }}-tpl2png
+
+      # 4) Verify your legally-owned ROM is present
       - name: Check for baserom.us.z64
         shell: msys2 {0}
         run: |
@@ -45,7 +54,7 @@ jobs:
             exit 1
           fi
 
-      # 4) Download & extract Render96EX textures tarball
+      # 5) Download & extract Render96EX textures tarball
       - name: Download and extract textures tarball
         shell: msys2 {0}
         run: |
@@ -55,24 +64,17 @@ jobs:
           tar -xzf textures.tar.gz
           mv RENDER96-HD-TEXTURE-PACK-master textures_repo
 
-      # 5) Checkout tpl-tools at depth=1 (avoids hanging git clone in msys2)
-      - name: Checkout tpl-tools
-        uses: actions/checkout@v4
-        with:
-          repository: theofficialgman/tpl-tools
-          path: textures_repo/tpl-tools
-          depth: 1
+      # 6) Download & extract tpl-tools tarball
+      - name: Download and extract tpl-tools
+        shell: msys2 {0}
+        run: |
+          curl -L --fail \
+            https://codeload.github.com/theofficialgman/tpl-tools/tar.gz/main \
+            -o tpl-tools.tar.gz
+          tar -xzf tpl-tools.tar.gz
+          mv tpl-tools-main textures_repo/tpl-tools
 
-      # 6) Cache tpl2png build output
-      - name: Cache tpl2png build
-        uses: actions/cache@v3
-        with:
-          path: textures_repo/tpl-tools/tpl2png
-          key: ${{ runner.os }}-tpl2png
-          restore-keys: |
-            ${{ runner.os }}-tpl2png
-
-      # 7) Build tpl2png if not cached
+      # 7) Build tpl2png (cached after first run)
       - name: Build tpl2png
         shell: msys2 {0}
         run: |
@@ -83,8 +85,8 @@ jobs:
           fi
           cp textures_repo/tpl-tools/tpl2png /usr/bin/
 
-      # 8) Convert all .tpl → .png
-      - name: Convert TPL textures to PNG
+      # 8) Convert TPL textures to PNG
+      - name: Convert TPL → PNG
         shell: msys2 {0}
         run: |
           mkdir -p textures
@@ -92,16 +94,17 @@ jobs:
             [ -f "$f" ] && tpl2png "$f" "textures/$(basename "${f%.tpl}.png")"
           done
 
-      # 9) Copy textures into your repo root
+      # 9) Import textures into repo root
       - name: Copy Render96EX textures
         shell: msys2 {0}
         run: |
           cp -r textures .
 
-      # 10) Build the UWP binaries
+      # 10) Build the UWP binaries via Makefile
       - name: Build with make
         shell: msys2 {0}
-        run: make PLATFORM=uwp CONFIG=Release
+        run: |
+          make PLATFORM=uwp CONFIG=Release
 
       # 11) Collect build output
       - name: Collect build output
@@ -110,7 +113,7 @@ jobs:
           mkdir -p output
           cp -r build/* output/
 
-      # 12) Normalize the executable name
+      # 12) Normalize the executable filename
       - name: Normalize executable name
         shell: msys2 {0}
         run: |
@@ -150,7 +153,7 @@ jobs:
           )
           $lines | Out-File output\AppxManifest.xml -Encoding utf8
 
-      # 14) Generate placeholder store assets
+      # 14) Generate placeholder Assets
       - name: Generate placeholder Assets
         shell: pwsh
         run: |
@@ -166,7 +169,7 @@ jobs:
             $g.Dispose(); $bmp.Dispose()
           }
 
-      # 15) Package to .appx
+      # 15) Package into a UWP .appx
       - name: Package UWP App
         shell: pwsh
         run: |
@@ -178,7 +181,7 @@ jobs:
       - name: Add SignTool
         uses: KamaranL/add-signtool-action@v1
 
-      # 17) Generate & export test certificate
+      # 17) Generate & export self-signed certificate
       - name: Generate Test Certificate
         shell: pwsh
         run: |
@@ -187,7 +190,7 @@ jobs:
           Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.pfx -Password $pwd
           Export-Certificate   -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.cer
 
-      # 18) Sign the .appx with timestamp
+      # 18) Sign the .appx with a timestamp
       - name: Sign the Appx
         shell: pwsh
         run: |
