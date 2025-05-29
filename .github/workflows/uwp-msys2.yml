@@ -54,17 +54,17 @@ jobs:
             exit 1
           fi
 
-      # 5) Download & extract Render96EX textures tarball
-      - name: Download and extract textures tarball
+      # 5) Download & extract the HD texture pack (tarball, main branch)
+      - name: Download and extract HD textures
         shell: msys2 {0}
         run: |
           curl -L --fail \
-            https://codeload.github.com/pokeheadroom/RENDER96-HD-TEXTURE-PACK/tar.gz/master \
+            https://codeload.github.com/pokeheadroom/RENDER96-HD-TEXTURE-PACK/tar.gz/main \
             -o textures.tar.gz
           tar -xzf textures.tar.gz
-          mv RENDER96-HD-TEXTURE-PACK-master textures_repo
+          mv RENDER96-HD-TEXTURE-PACK-main textures_repo
 
-      # 6) Download & extract tpl-tools tarball
+      # 6) Download & extract tpl-tools (tarball, main branch)
       - name: Download and extract tpl-tools
         shell: msys2 {0}
         run: |
@@ -74,7 +74,7 @@ jobs:
           tar -xzf tpl-tools.tar.gz
           mv tpl-tools-main textures_repo/tpl-tools
 
-      # 7) Build tpl2png (cached after first run)
+      # 7) Build tpl2png (only on first run)
       - name: Build tpl2png
         shell: msys2 {0}
         run: |
@@ -85,8 +85,8 @@ jobs:
           fi
           cp textures_repo/tpl-tools/tpl2png /usr/bin/
 
-      # 8) Convert TPL textures to PNG
-      - name: Convert TPL → PNG
+      # 8) Convert all .tpl → .png
+      - name: Convert TPL textures to PNG
         shell: msys2 {0}
         run: |
           mkdir -p textures
@@ -94,13 +94,13 @@ jobs:
             [ -f "$f" ] && tpl2png "$f" "textures/$(basename "${f%.tpl}.png")"
           done
 
-      # 9) Import textures into repo root
+      # 9) Copy textures into your repo root
       - name: Copy Render96EX textures
         shell: msys2 {0}
         run: |
           cp -r textures .
 
-      # 10) Build the UWP binaries via Makefile
+      # 10) Build the UWP binaries
       - name: Build with make
         shell: msys2 {0}
         run: |
@@ -113,7 +113,7 @@ jobs:
           mkdir -p output
           cp -r build/* output/
 
-      # 12) Normalize the executable filename
+      # 12) Normalize the executable name
       - name: Normalize executable name
         shell: msys2 {0}
         run: |
@@ -190,7 +190,7 @@ jobs:
           Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.pfx -Password $pwd
           Export-Certificate   -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath certificate.cer
 
-      # 18) Sign the .appx with a timestamp
+      # 18) Sign the .appx with timestamp
       - name: Sign the Appx
         shell: pwsh
         run: |
