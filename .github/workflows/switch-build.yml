@@ -9,35 +9,59 @@ on:
 jobs:
   build-switch:
     runs-on: ubuntu-latest
-    container:
-      image: yesimnathan/switchdev:latest
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Mark workspace as safe for Git
+      - name: Setup Git safe directory
         run: |
           git config --global --add safe.directory "${{ github.workspace }}"
 
-      - name: Install SDL2
+      - name: Install prerequisites
         run: |
-          apt-get update --allow-releaseinfo-change
-          apt-get install -y libsdl2-dev
+          sudo apt-get update --allow-releaseinfo-change
+          sudo apt-get install -y cmake git wget tar python3 dpkg libsdl2-dev
 
-      - name: Build for PC & Switch (ignore errors)
+      - name: Install devkitPro pacman helper
+        run: |
+          wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
+          chmod +x install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
+
+      - name: Configure devkitPro pacman repos
+        run: |
+          sudo mkdir -p /etc/pacman.d
+          printf '%s\n' \
+            '[dkp-libs]' \
+            'Server = https://pkg.devkitpro.org/packages/' \
+            '' \
+            '[dkp-linux]' \
+            'Server = https://pkg.devkitpro.org/packages/linux/$arch/' \
+          | sudo tee /etc/pacman.d/devkitpro.conf > /dev/null
+          wget https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz
+          sudo pacman -U devkitpro-keyring.pkg.tar.xz --noconfirm
+
+      - name: Sync devkitPro packages
+        run: |
+          sudo dkp-pacman -Syu --noconfirm
+          sudo dkp-pacman -S --noconfirm switch-dev switch-tools
+
+      - name: Build for PC (native)
         run: |
           make -i -j$(nproc)
+
+      - name: Build for Switch
+        run: |
           make -i TARGET_SWITCH=1 -j$(nproc)
 
-      - name: Locate any build artifacts
+      - name: Locate .nro artifacts
         run: |
-          echo "=== Listing all .nro files ==="
           find . -type f -name '*.nro'
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          path: build/*_nx/*.nro
+          path: '**/*_nx/*.nro'
           if-no-files-found: ignore
