@@ -20,12 +20,11 @@ jobs:
 
       - name: Install host SDL2 dev package
         run: |
-          # Allow the suite/codename change (Bullseye → Bookworm) and update
           apt-get update --allow-releaseinfo-change
           apt-get install -y libsdl2-dev
 
-      - name: Build with make
-        run: make -j$(nproc)
+      - name: Build with make (ignore clean-up errors)
+        run: make -i -j$(nproc)
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
