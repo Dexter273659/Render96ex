@@ -12,15 +12,13 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install devkitPro pacman & Switch SDK
         run: |
           sudo apt update
           sudo apt install -y cmake git wget tar python3
-          # Install devkitPro pacman helper
-          wget https://raw.githubusercontent.com/devkitPro/build-scripts/master/tools/devkitpro-pacman/install-devkitpro-pacman.sh -O install.sh
-          chmod +x install.sh
-          sudo ./install.sh
-          # Pull in Switch toolchain and C libraries
+          wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
+          chmod +x install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
           sudo dkp-pacman -Syu --noconfirm
           sudo dkp-pacman -S --noconfirm switch-dev switch-tools
 
