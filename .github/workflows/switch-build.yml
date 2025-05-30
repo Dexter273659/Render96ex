@@ -14,62 +14,41 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup Git safe directory
-        run: |
-          git config --global --add safe.directory "${{ github.workspace }}"
-
-      - name: Ensure ROM is present
+      - name: Verify baserom presence
         run: |
           if [ ! -f baserom.us.z64 ] && [ ! -f baserom.eu.z64 ] && [ ! -f baserom.jp.z64 ]; then
-            echo "Error: You must add a baserom.<region>.z64 to the repo root!"
+            echo "Error: Add a baserom.<region>.z64 to the repo root."
             exit 1
           fi
 
-      - name: Install prerequisites
+      - name: Install devkitPro & Switch SDK
         run: |
-          sudo apt-get update --allow-releaseinfo-change
-          sudo apt-get install -y cmake git wget tar python3 dpkg libsdl2-dev
-
-      - name: Install devkitPro pacman helper
-        run: |
+          sudo apt update
+          sudo apt install -y cmake git wget tar python3 dpkg
           wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
           chmod +x install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
-
-      - name: Configure devkitPro pacman repos
-        run: |
-          sudo mkdir -p /etc/pacman.d
-          printf '%s
-' \
-            '[dkp-libs]' \
-            'Server = https://pkg.devkitpro.org/packages/' \
-            '' \
-            '[dkp-linux]' \
-            'Server = https://pkg.devkitpro.org/packages/linux/$arch/' \
-          | sudo tee /etc/pacman.d/devkitpro.conf > /dev/null
-          sudo dkp-pacman -U https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz --noconfirm
-
-      - name: Sync devkitPro packages
-        run: |
           sudo dkp-pacman -Syu --noconfirm
           sudo dkp-pacman -S --noconfirm switch-dev switch-tools
 
-      - name: Build for PC (native)
+      - name: Install host SDL2 dev package
         run: |
-          make -i -j$(nproc)
+          sudo apt-get update --allow-releaseinfo-change
+          sudo apt-get install -y libsdl2-dev
+
+      - name: Build for PC (extract assets)
+        run: make -i -j$(nproc)
 
       - name: Build for Switch
-        run: |
-          make -i TARGET_SWITCH=1 -j$(nproc)
+        run: make -i TARGET_SWITCH=1 -j$(nproc)
 
-      - name: Locate .nro artifacts
+      - name: "Debug: locate .nro files"
         run: |
-          echo "=== Locating NRO files ==="
-          find . -type f -name '*.nro' || echo "No .nro found"
+          echo "Looking for .nro outputs..."
+          find . -type f -name '*.nro' || echo "No .nro files found"
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Render96ex-Switch
+          name: Render96ex-NRO
           path: '**/*.nro'
-          if-no-files-found: ignore
