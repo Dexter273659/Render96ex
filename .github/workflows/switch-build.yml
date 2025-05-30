@@ -20,7 +20,8 @@ jobs:
 
       - name: Install host SDL2 dev package
         run: |
-          apt-get update
+          # Allow the suite/codename change (Bullseye → Bookworm) and update
+          apt-get update --allow-releaseinfo-change
           apt-get install -y libsdl2-dev
 
       - name: Build with make
