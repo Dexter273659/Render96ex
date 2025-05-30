@@ -8,6 +8,7 @@ on:
 jobs:
   build-switch:
     runs-on: ubuntu-latest
+    # Use a container with libnx & devkitA64 pre-installed to avoid pacman issues
     container:
       image: ghcr.io/d3fau4/nx-dev:main
 
@@ -23,14 +24,19 @@ jobs:
           apt-get update --allow-releaseinfo-change
           apt-get install -y libsdl2-dev
 
-      - name: Build for Switch (ignore clean-up errors)
-        run: make -i TARGET_SWITCH=1 -j$(nproc)
+      - name: Build for PC (native)  
+        run: make -i -j$(nproc)  
+        # Step 1: Build your native-platform binary so shared code/assets are ready
 
-      - name: List built files
+      - name: Build for Switch  
+        run: make -i TARGET_SWITCH=1 -j$(nproc)  
+        # Step 3: Cross-compile to .nro :contentReference[oaicite:0]{index=0}
+
+      - name: List built files  
         run: find .
 
-      - name: Upload NRO artifact
+      - name: Upload NRO artifact  
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          path: '**/*.nro'
+          path: '**/*_nx/*.nro'
