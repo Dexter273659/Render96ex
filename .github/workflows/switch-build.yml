@@ -25,12 +25,11 @@ jobs:
 
       - name: Prepare Switch SDK
         run: |
-          # load devkitPro/libnx environment
-          source "$DEVKITPRO/switchvars.sh"
+          # POSIX-compatible “source” for /bin/sh
+          . "$DEVKITPRO/switchvars.sh"
 
       - name: Build for Switch (ignore clean-up errors)
-        run: |
-          make -i TARGET_SWITCH=1 -j$(nproc)        # :contentReference[oaicite:0]{index=0}
+        run: make -i TARGET_SWITCH=1 -j$(nproc)
 
       - name: List built files
         run: find .
