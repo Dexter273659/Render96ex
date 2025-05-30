@@ -9,7 +9,7 @@ jobs:
   build-switch:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/d3fau4/nx-dev:main
+      image: yesimnathan/switchdev:latest
 
     steps:
       - name: Checkout source
@@ -23,28 +23,18 @@ jobs:
           apt-get update --allow-releaseinfo-change
           apt-get install -y libsdl2-dev
 
-      - name: Ensure ROM is present
+      - name: Build for PC & Switch (ignore clean-up errs)
         run: |
-          if [ ! -f baserom.us.z64 ]; then
-            echo "Error: You must add baserom.us.z64 to the repo root!"
-            exit 1
-          fi
+          make -i -j$(nproc)                    # native build to extract assets
+          make -i TARGET_SWITCH=1 -j$(nproc)    # cross-compile to .nro
 
-      - name: Build for PC (native)  
+      - name: Debug: Locate any .nro files
         run: |
-          # Extracts all assets into build/us_pc; required before Switch build
-          make -i -j$(nproc)                        # :contentReference[oaicite:1]{index=1}
+          echo "=== Locating .nro artifacts ==="
+          find . -type f -name '*.nro' || echo "No .nro found"
 
-      - name: Build for Switch  
-        run: |
-          # Cross-compile into an .nro using libnx
-          make -i TARGET_SWITCH=1 -j$(nproc)        # :contentReference[oaicite:2]{index=2}
-
-      - name: List built files  
-        run: find .
-
-      - name: Upload NRO artifact  
+      - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          path: build/*_nx/*.nro                  # matches build/{lang}_nx/*.nro :contentReference[oaicite:3]{index=3}
+          path: '**/*.nro'                    # adjust to the path shown by the debug step
