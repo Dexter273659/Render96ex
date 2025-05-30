@@ -2,7 +2,8 @@ name: Build Render96ex for Switch
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
   workflow_dispatch:
 
 jobs:
@@ -16,25 +17,27 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Mark workspace as safe for Git
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        run: |
+          git config --global --add safe.directory "${{ github.workspace }}"
 
-      - name: Install host SDL2 dev package
+      - name: Install SDL2
         run: |
           apt-get update --allow-releaseinfo-change
           apt-get install -y libsdl2-dev
 
-      - name: Build for PC & Switch (ignore clean-up errs)
+      - name: Build for PC & Switch (ignore errors)
         run: |
-          make -i -j$(nproc)                    # native build to extract assets
-          make -i TARGET_SWITCH=1 -j$(nproc)    # cross-compile to .nro
+          make -i -j$(nproc)
+          make -i TARGET_SWITCH=1 -j$(nproc)
 
-      - name: Debug: Locate any .nro files
+      - name: Locate any build artifacts
         run: |
-          echo "=== Locating .nro artifacts ==="
-          find . -type f -name '*.nro' || echo "No .nro found"
+          echo "=== Listing all .nro files ==="
+          find . -type f -name '*.nro'
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          path: '**/*.nro'                    # adjust to the path shown by the debug step
+          path: build/*_nx/*.nro
+          if-no-files-found: ignore
