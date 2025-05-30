@@ -16,6 +16,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y cmake git wget tar python3
+          # Grab the new devkitPro pacman installer
           wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
           chmod +x install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
