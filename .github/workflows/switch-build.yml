@@ -8,13 +8,15 @@ on:
 jobs:
   build-switch:
     runs-on: ubuntu-latest
-    # use a libnx-ready container so we don't need to install anything ourselves :contentReference[oaicite:0]{index=0}
     container:
       image: ghcr.io/d3fau4/nx-dev:main
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Mark workspace as safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Build with make
         run: make -j$(nproc)
