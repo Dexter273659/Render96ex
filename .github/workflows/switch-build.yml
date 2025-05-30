@@ -18,6 +18,13 @@ jobs:
         run: |
           git config --global --add safe.directory "${{ github.workspace }}"
 
+      - name: Ensure ROM is present
+        run: |
+          if [ ! -f baserom.us.z64 ] && [ ! -f baserom.eu.z64 ] && [ ! -f baserom.jp.z64 ]; then
+            echo "Error: You must add a baserom.<region>.z64 to the repo root!"
+            exit 1
+          fi
+
       - name: Install prerequisites
         run: |
           sudo apt-get update --allow-releaseinfo-change
@@ -32,15 +39,15 @@ jobs:
       - name: Configure devkitPro pacman repos
         run: |
           sudo mkdir -p /etc/pacman.d
-          printf '%s\n' \
+          printf '%s
+' \
             '[dkp-libs]' \
             'Server = https://pkg.devkitpro.org/packages/' \
             '' \
             '[dkp-linux]' \
             'Server = https://pkg.devkitpro.org/packages/linux/$arch/' \
           | sudo tee /etc/pacman.d/devkitpro.conf > /dev/null
-          wget https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz
-          sudo dkp-pacman -U devkitpro-keyring.pkg.tar.xz --noconfirm
+          sudo dkp-pacman -U https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz --noconfirm
 
       - name: Sync devkitPro packages
         run: |
@@ -57,11 +64,12 @@ jobs:
 
       - name: Locate .nro artifacts
         run: |
-          find . -type f -name '*.nro'
+          echo "=== Locating NRO files ==="
+          find . -type f -name '*.nro' || echo "No .nro found"
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          path: '**/*_nx/*.nro'
+          path: '**/*.nro'
           if-no-files-found: ignore
