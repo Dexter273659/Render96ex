@@ -8,39 +8,13 @@ on:
 jobs:
   build-switch:
     runs-on: ubuntu-latest
+    # use a libnx-ready container so we don't need to install anything ourselves :contentReference[oaicite:0]{index=0}
+    container:
+      image: ghcr.io/d3fau4/nx-dev:main
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Install devkitPro pacman & Switch SDK
-        run: |
-          sudo apt update
-          sudo apt install -y cmake git wget tar python3 dpkg
-
-          # Install the devkitPro pacman helper
-          wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
-          chmod +x install-devkitpro-pacman
-          sudo ./install-devkitpro-pacman
-
-          # Ensure the pacman.d directory exists for our custom config
-          sudo mkdir -p /etc/pacman.d
-
-          # Overwrite pacman config to use the correct servers (fixes the 403)
-          printf '%s\n' \
-            '[dkp-libs]' \
-            'Server = https://pkg.devkitpro.org/packages/' \
-            '' \
-            '[dkp-linux]' \
-            'Server = https://pkg.devkitpro.org/packages/linux/$arch/' \
-          | sudo tee /etc/pacman.d/devkitpro.conf > /dev/null
-
-          # Import the devkitPro keyring so pacman can verify packages
-          wget https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz
-          sudo pacman -U devkitpro-keyring.pkg.tar.xz --noconfirm
-
-          # Sync and install the Switch toolchain
-          sudo dkp-pacman -Syu --noconfirm
-          sudo dkp-pacman -S --noconfirm switch-dev switch-tools
 
       - name: Build with make
         run: make -j$(nproc)
