@@ -22,14 +22,26 @@ jobs:
           chmod +x install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
 
-          # Install Switch toolchain & libs
+          # Overwrite pacman config to use the correct servers (fixes 403 errors)
+          sudo tee /etc/pacman.d/devkitpro.conf > /dev/null << 'EOF'
+[dkp-libs]
+Server = https://pkg.devkitpro.org/packages/
+
+[dkp-linux]
+Server = https://pkg.devkitpro.org/packages/linux/\$arch/
+EOF :contentReference[oaicite:2]{index=2}
+
+          # Import the devkitPro keyring so pacman can verify packages
+          wget https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz
+          sudo pacman -U devkitpro-keyring.pkg.tar.xz --noconfirm :contentReference[oaicite:3]{index=3}
+
+          # Update and install the Switch toolchain
           sudo dkp-pacman -Syu --noconfirm
           sudo dkp-pacman -S --noconfirm switch-dev switch-tools
 
       - name: Build with make
         run: |
-          # By default $GITHUB_WORKSPACE is the repo root
-          # which should contain your Makefile
+          # Repo root should contain your Makefile
           make -j$(nproc)
 
       - name: Upload NRO artifact
