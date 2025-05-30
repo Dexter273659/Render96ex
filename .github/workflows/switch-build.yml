@@ -40,7 +40,7 @@ jobs:
             'Server = https://pkg.devkitpro.org/packages/linux/$arch/' \
           | sudo tee /etc/pacman.d/devkitpro.conf > /dev/null
           wget https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz
-          sudo pacman -U devkitpro-keyring.pkg.tar.xz --noconfirm
+          sudo dkp-pacman -U devkitpro-keyring.pkg.tar.xz --noconfirm
 
       - name: Sync devkitPro packages
         run: |
