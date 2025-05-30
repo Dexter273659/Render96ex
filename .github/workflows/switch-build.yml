@@ -26,8 +26,13 @@ jobs:
       - name: Build with make (ignore clean-up errors)
         run: make -i -j$(nproc)
 
+      - name: List built files
+        run: |
+          echo "=== Built files ==="
+          find . -type f
+
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          path: render96ex.nro
+          path: '**/*.nro'
