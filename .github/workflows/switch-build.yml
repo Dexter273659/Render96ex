@@ -18,18 +18,19 @@ jobs:
           sudo apt install -y cmake git wget tar python3 dpkg
 
           # Install the devkitPro pacman helper
-          wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
+          wget https://apt.devkitpro.org/install-devkitpro-pacman \
+            -O install-devkitpro-pacman
           chmod +x install-devkitpro-pacman
           sudo ./install-devkitpro-pacman
 
-          # Overwrite pacman config to use the correct servers
-          sudo tee /etc/pacman.d/devkitpro.conf > /dev/null << 'EOF'
-[dkp-libs]
-Server = https://pkg.devkitpro.org/packages/
-
-[dkp-linux]
-Server = https://pkg.devkitpro.org/packages/linux/$arch/
-EOF
+          # Overwrite pacman config to use the correct servers (fixes the 403)
+          printf '%s\n' \
+            '[dkp-libs]' \
+            'Server = https://pkg.devkitpro.org/packages/' \
+            '' \
+            '[dkp-linux]' \
+            'Server = https://pkg.devkitpro.org/packages/linux/$arch/' \
+          | sudo tee /etc/pacman.d/devkitpro.conf > /dev/null
 
           # Import the devkitPro keyring so pacman can verify packages
           wget https://pkg.devkitpro.org/devkitpro-keyring.pkg.tar.xz
@@ -40,8 +41,7 @@ EOF
           sudo dkp-pacman -S --noconfirm switch-dev switch-tools
 
       - name: Build with make
-        run: |
-          make -j$(nproc)
+        run: make -j$(nproc)
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
