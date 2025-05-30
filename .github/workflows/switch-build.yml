@@ -23,16 +23,20 @@ jobs:
           apt-get update --allow-releaseinfo-change
           apt-get install -y libsdl2-dev
 
-      - name: Build with make (ignore clean-up errors)
-        run: make -i -j$(nproc)
+      - name: Prepare Switch SDK
+        run: |
+          # load devkitPro/libnx environment
+          source "$DEVKITPRO/switchvars.sh"
+
+      - name: Build for Switch (ignore clean-up errors)
+        run: |
+          make -i TARGET_SWITCH=1 -j$(nproc)        # :contentReference[oaicite:0]{index=0}
 
       - name: List built files
-        run: |
-          echo "=== Built files ==="
-          find . -type f
+        run: find .
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          path: '**/*.nro'
+          path: 'build/*_nx/*.nro'
