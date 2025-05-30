@@ -1,4 +1,4 @@
-name: Build Render96 for Switch
+name: Build Render96ex for Switch
 
 on:
   push:
@@ -14,35 +14,26 @@ jobs:
 
       - name: Install devkitPro pacman & Switch SDK
         run: |
-          echo "=== Debug: checking for old raw.githubusercontent refs ==="
-          grep -R "raw.githubusercontent.com" -n . || echo "None found—good!"
-          
           sudo apt update
           sudo apt install -y cmake git wget tar python3 dpkg
 
-          echo "=== Attempting apt.devkitpro.org installer ==="
-          if wget --spider https://apt.devkitpro.org/install-devkitpro-pacman; then
-            wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
-            chmod +x install-devkitpro-pacman
-            sudo ./install-devkitpro-pacman
-          else
-            echo "apt.devkitpro.org unreachable—falling back to .deb release"
-            wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.2/devkitpro-pacman.deb
-            sudo dpkg -i devkitpro-pacman.deb
-            sudo apt-get install -f -y
-          fi
+          # Install the devkitPro pacman helper
+          wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
+          chmod +x install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
 
+          # Install Switch toolchain & libs
           sudo dkp-pacman -Syu --noconfirm
           sudo dkp-pacman -S --noconfirm switch-dev switch-tools
 
-      - name: Configure & build
+      - name: Build with make
         run: |
-          mkdir build && cd build
-          cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/libnx/switch.cmake
+          # By default $GITHUB_WORKSPACE is the repo root
+          # which should contain your Makefile
           make -j$(nproc)
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Render96-Switch
-          path: build/render96.nro
+          name: Render96ex-Switch
+          path: render96ex.nro
