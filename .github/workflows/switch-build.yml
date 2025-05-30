@@ -18,6 +18,11 @@ jobs:
       - name: Mark workspace as safe for Git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - name: Install host SDL2 dev package
+        run: |
+          apt-get update
+          apt-get install -y libsdl2-dev
+
       - name: Build with make
         run: make -j$(nproc)
 
