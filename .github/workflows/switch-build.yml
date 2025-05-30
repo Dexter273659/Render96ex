@@ -2,7 +2,7 @@ name: Build Render96 for Switch
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
@@ -14,12 +14,24 @@ jobs:
 
       - name: Install devkitPro pacman & Switch SDK
         run: |
+          echo "=== Debug: checking for old raw.githubusercontent refs ==="
+          grep -R "raw.githubusercontent.com" -n . || echo "None found—good!"
+          
           sudo apt update
-          sudo apt install -y cmake git wget tar python3
-          # Grab the new devkitPro pacman installer
-          wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
-          chmod +x install-devkitpro-pacman
-          sudo ./install-devkitpro-pacman
+          sudo apt install -y cmake git wget tar python3 dpkg
+
+          echo "=== Attempting apt.devkitpro.org installer ==="
+          if wget --spider https://apt.devkitpro.org/install-devkitpro-pacman; then
+            wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
+            chmod +x install-devkitpro-pacman
+            sudo ./install-devkitpro-pacman
+          else
+            echo "apt.devkitpro.org unreachable—falling back to .deb release"
+            wget https://github.com/devkitPro/pacman/releases/download/devkitpro-pacman-1.0.2/devkitpro-pacman.deb
+            sudo dpkg -i devkitpro-pacman.deb
+            sudo apt-get install -f -y
+          fi
+
           sudo dkp-pacman -Syu --noconfirm
           sudo dkp-pacman -S --noconfirm switch-dev switch-tools
 
