@@ -1,0 +1,37 @@
+name: Build Render96 for Switch
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-switch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cmake git wget tar python3
+          # Install devkitPro pacman helper
+          wget https://raw.githubusercontent.com/devkitPro/build-scripts/master/tools/devkitpro-pacman/install-devkitpro-pacman.sh -O install.sh
+          chmod +x install.sh
+          sudo ./install.sh
+          # Pull in Switch toolchain and C libraries
+          sudo dkp-pacman -Syu --noconfirm
+          sudo dkp-pacman -S --noconfirm switch-dev switch-tools
+
+      - name: Configure & build
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/libnx/switch.cmake
+          make -j$(nproc)
+
+      - name: Upload NRO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Render96-Switch
+          path: build/render96.nro
