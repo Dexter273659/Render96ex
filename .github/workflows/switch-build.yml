@@ -5,7 +5,7 @@ on:
 
 jobs:
   ###########################################################################
-  # 1) UWP build (MSYS2 on Windows) – exactly your original steps, verbatim.
+  # 1) UWP build (MSYS2 on Windows) – your original pipeline, verbatim.
   ###########################################################################
   uwp-msys2-build:
     name: Build Render96EX UWP (MSYS2)
@@ -142,7 +142,7 @@ jobs:
             certificate.cer
 
   ###########################################################################
-  # 2) Switch build (Ubuntu) – two‐phase make with devkitPro + SDL2 + debug.
+  # 2) Switch build (Ubuntu) – two‐phase make with devkitPro + SDL2 + explicit debug.
   ###########################################################################
   switch-build:
     name: Build Render96EX for Nintendo Switch
@@ -183,32 +183,36 @@ jobs:
         run: |
           echo "=== Native build (extracting assets) ==="
           make -j$(nproc)
-        # If this step fails, you will see errors here—fix those first.
+          # If this step fails, inspect the error logs. Once it succeeds, you should see
+          # folders like build/us_pc/... with all the extracted files.
 
       - name: Check PC build output
         run: |
           echo "=== Files under build after native build ==="
-          find build -maxdepth 3 -type f | sed 's|^|  » |'
+          find build -maxdepth 3 -type f | sed 's|^|  » |' || echo "No PC build files found"
           echo ""
 
       - name: Build for Switch (produce .nro)
         run: |
           echo "=== Switch build (TARGET_SWITCH=1) ==="
-          # In almost all cases, switchvars.sh is already sourced by devkitPro installer,
-          # but we’ll source here if it exists:
+          # Typically switchvars.sh is already sourced by devkitPro installer,
+          # but to be safe we source it if it exists:
           if [ -f "$DEVKITPRO/switchvars.sh" ]; then
             . "$DEVKITPRO/switchvars.sh"
           fi
           make TARGET_SWITCH=1 -j$(nproc)
+          # This should produce an .nro under build/{lang}_nx/ (e.g. build/us_nx/Render96ex.nro).
 
       - name: Check Switch build output
         run: |
           echo "=== Files under build after switch build ==="
-          find build -maxdepth 4 -type f | sed 's|^|  » |'
+          find build -maxdepth 4 -type f | sed 's|^|  » |' || echo "No files found in build/"
           echo ""
 
-      - name: Upload ALL .nro artifacts
+      - name: Upload EXACT .nro artifact
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          path: '**/*.nro'
+          # ▶ CHANGE THIS TO THE EXACT PATH YOU SAW IN THE PREVIOUS STEP logs.
+          #   For example, if “find” printed “build/us_nx/Render96ex.nro” use that:
+          path: build/us_nx/Render96ex.nro
