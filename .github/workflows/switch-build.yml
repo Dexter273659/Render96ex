@@ -5,7 +5,7 @@ on:
 
 jobs:
   ###########################################################################
-  # 1) UWP build (MSYS2 on Windows) – your original pipeline, verbatim.
+  # 1) UWP build (MSYS2 on Windows) – exactly your original pipeline, verbatim.
   ###########################################################################
   uwp-msys2-build:
     name: Build Render96EX UWP (MSYS2)
@@ -162,15 +162,23 @@ jobs:
 
       - name: Install devkitPro & Switch SDK
         run: |
+          # 1) Update base system and install prerequisites
           sudo apt update
-          sudo apt install -y cmake git wget tar python3 dpkg
+          sudo apt install -y cmake git wget tar python3 curl gnupg software-properties-common
 
-          # Install the official devkitPro pacman helper
+          # 2) Download + run the devkitPro pacman installer
           wget https://apt.devkitpro.org/install-devkitpro-pacman -O install-devkitpro-pacman
           chmod +x install-devkitpro-pacman
-          sudo ./install-devkitpro-pacman
+          sudo bash install-devkitpro-pacman || true
 
-          # Sync & install exactly what the wiki recommends
+          # 3) Fix any broken dependencies left behind by the installer
+          sudo apt-get -y --fix-broken install
+
+          # 4) Update again (allow for Debian codename changes) and explicitly install devkitpro-pacman
+          sudo apt-get update --allow-releaseinfo-change
+          sudo apt-get install -y devkitpro-pacman
+
+          # 5) Use dkp-pacman to bring in devkitA64 + libnx + Switch portlibs
           sudo dkp-pacman -Syu --noconfirm
           sudo dkp-pacman -S --noconfirm devkitA64 libnx switch-tools switch-sdl2
 
@@ -195,13 +203,13 @@ jobs:
       - name: Build for Switch (produce .nro)
         run: |
           echo "=== Switch build (TARGET_SWITCH=1) ==="
-          # Typically switchvars.sh is already sourced by devkitPro installer,
-          # but to be safe we source it if it exists:
+          # In almost all cases, switchvars.sh is already sourced by the devkitPro installer,
+          # but to be safe, source it if it exists:
           if [ -f "$DEVKITPRO/switchvars.sh" ]; then
             . "$DEVKITPRO/switchvars.sh"
           fi
           make TARGET_SWITCH=1 -j$(nproc)
-          # This should produce an .nro under build/{lang}_nx/ (e.g. build/us_nx/Render96ex.nro).
+          # This step should produce an .nro under build/{lang}_nx/ (e.g. build/us_nx/Render96ex.nro).
 
       - name: Check Switch build output
         run: |
@@ -213,6 +221,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch
-          # ▶ CHANGE THIS TO THE EXACT PATH YOU SAW IN THE PREVIOUS STEP logs.
-          #   For example, if “find” printed “build/us_nx/Render96ex.nro” use that:
+          # ▶ If you saw, for example, “build/us_nx/Render96ex.nro” above, point here at that exact path:
           path: build/us_nx/Render96ex.nro
