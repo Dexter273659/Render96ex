@@ -1,4 +1,3 @@
-# File: .github/workflows/build-switch.yml
 name: Build Render96ex for Nintendo Switch
 
 on:
@@ -10,9 +9,8 @@ on:
 jobs:
   build-switch:
     runs-on: ubuntu-latest
-    # Use the official devkitPro container for Switch development
     container:
-      image: devkitpro/devkitA64
+      image: devkitpro/devkita64:latest   # lowercase!
 
     steps:
       - name: Checkout alpha branch
@@ -27,30 +25,24 @@ jobs:
 
       - name: Install Switch toolchain & portlibs
         run: |
-          # Update devkitPro pacman database
           dkp-pacman -Syu --noconfirm
-          # Install devkitA64 and Switch port libraries
           dkp-pacman -S --noconfirm \
             devkitA64 \
-            devkitpro-pkgbuild-helpers \
             libnx \
             switch-tools \
             switch-mesa \
             switch-libdrm_nouveau \
             switch-sdl2
+
       - name: Native build (Linux)
-        run: |
-          # Build native executable first (required by Switch port)
-          make -j$(nproc)
+        run: make -j$(nproc)
 
       - name: Cross-compile for Switch
         run: |
-          # Set up devkitPro environment for Switch
           source $DEVKITPRO/switchvars.sh
-          # Build with TARGET_SWITCH; adjust -j if you need fewer cores
           make TARGET_SWITCH=1 -j$(nproc)
 
-      - name: Collect and upload .nro artifact
+      - name: Upload .nro artifact
         uses: actions/upload-artifact@v4
         with:
           name: Render96ex-Switch-nro
