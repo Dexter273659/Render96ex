@@ -3,7 +3,7 @@ name: Build Render96ex for Nintendo Switch
 
 on:
   push:
-    branches: 
+    branches:
       - alpha
   workflow_dispatch:
 
@@ -40,7 +40,7 @@ jobs:
 
       - name: Cross-compile for Switch
         run: |
-          source "$DEVKITPRO/switchvars.sh"
+          . "$DEVKITPRO/switchvars.sh"
           make TARGET_SWITCH=1 -j$(nproc)
 
       - name: Upload .nro artifact
