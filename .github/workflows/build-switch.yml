@@ -1,4 +1,3 @@
-# .github/workflows/build-switch.yml
 name: Build Render96ex for Nintendo Switch
 
 on:
@@ -10,7 +9,7 @@ jobs:
   build-switch:
     runs-on: ubuntu-latest
     container:
-      image: devkitpro/devkita64:latest   # <-- official, lowercase
+      image: devkitpro/devkita64:latest
 
     steps:
       - name: Checkout alpha
@@ -21,11 +20,14 @@ jobs:
       - name: Mark workspace safe for Git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Install host tools
+      - name: Install host tools & deps
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            unzip make git python3 build-essential cmake
+            unzip git python3 \
+            build-essential \
+            libsdl2-dev \
+            libglew-dev
 
       - name: Native build (Linux)
         run: make -j$(nproc)
