@@ -1,49 +1,38 @@
+# .github/workflows/build-switch.yml
 name: Build Render96ex for Nintendo Switch
 
 on:
   push:
-    branches:
-      - alpha
+    branches: [alpha]
   workflow_dispatch:
 
 jobs:
   build-switch:
     runs-on: ubuntu-latest
     container:
-      image: devkitpro/devkita64:latest
+      image: devkitpro/devkita64:latest   # <-- official, lowercase
 
     steps:
-      - name: Checkout alpha branch
+      - name: Checkout alpha
         uses: actions/checkout@v4
         with:
           ref: alpha
 
-      - name: Mark workspace as safe for Git
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Mark workspace safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Install host tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y unzip make git python3 build-essential
-
-      - name: Install Switch toolchain & portlibs
-        run: |
-          dkp-pacman -Syu --noconfirm
-          dkp-pacman -S --noconfirm \
-            devkitA64 \
-            libnx \
-            switch-tools \
-            switch-mesa \
-            switch-libdrm_nouveau \
-            switch-sdl2
+          sudo apt-get install -y \
+            unzip make git python3 build-essential cmake
 
       - name: Native build (Linux)
         run: make -j$(nproc)
 
       - name: Cross-compile for Switch
         run: |
-          source $DEVKITPRO/switchvars.sh
+          source "$DEVKITPRO/switchvars.sh"
           make TARGET_SWITCH=1 -j$(nproc)
 
       - name: Upload .nro artifact
