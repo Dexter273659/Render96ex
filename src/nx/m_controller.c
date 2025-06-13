@@ -2,6 +2,7 @@
 #include "m_controller.h"
 
 #include <switch.h>
+#include <string.h>
 
 PadState pad;
 u32 target_device = -1;
@@ -73,7 +74,8 @@ void controller_nx_rumble_stop(void) {
 void controller_nx_rumble_loop(void){
     padUpdate(&pad);
     target_device = padIsHandheld(&pad) ? 0 : 1;
-    if(vlength != -1 && last <= vlength){
+    if ((s32)vlength != -1 && last <= (s32)vlength) {
+
         hidSendVibrationValues(VibrationDeviceHandles[target_device], VibrationValues, 2);        
         last++;
     } else vlength = -1;
