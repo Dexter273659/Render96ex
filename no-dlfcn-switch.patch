@@ -1,0 +1,16 @@
+diff --git a/include/miniaudio.h b/include/miniaudio.h
+index 1a2b3c4..5d6e7f8 100644
+--- a/include/miniaudio.h
++++ b/include/miniaudio.h
+@@ -17020,7 +17020,10 @@ MA_API ma_device * ma_device_config_init(ma_device_config *pConfig, ma_format format
+     ma_device_format_and_channel_conversion_backend backend;
+
+     /* We need dlfcn for dynamic loading on POSIX platforms. */
+-    #include <dlfcn.h>
++    /* On Switch there is no <dlfcn.h>, so skip it there: */
++    #if !defined(__SWITCH__)
++    #include <dlfcn.h>
++    #endif
+
+     /* Currently only buffer callbacks are supported. */
+     ma_device_data_proc_proc onData;  

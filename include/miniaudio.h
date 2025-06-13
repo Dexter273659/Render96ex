@@ -17021,7 +17021,11 @@ DEVICE I/O
 #ifdef MA_POSIX
     #include <sys/types.h>
     #include <unistd.h>
-    #include <dlfcn.h>
+    #include <dlfcn.h>/* We need dlfcn for dynamic loading on POSIX platforms. */
+#if !defined(__SWITCH__)
+#include <dlfcn.h>
+#endif
+
 #endif
 
 /*
