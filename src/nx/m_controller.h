@@ -1,10 +1,11 @@
 #ifndef VIBRATION_MODULE
 #define VIBRATION_MODULE
+#include <stdbool.h>
 
 #ifndef AVOID_UTYPES
 typedef float  f32;
 typedef double f64;
-typedef char bool;
+
 #endif
 
 enum ControllerType {
