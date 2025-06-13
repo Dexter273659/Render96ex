@@ -1,0 +1,49 @@
+# File: .github/workflows/build-switch.yml
+name: Build Render96ex for Nintendo Switch
+
+on:
+  push:
+    branches:
+      - tester
+  workflow_dispatch:
+
+jobs:
+  build-switch:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+
+    steps:
+      - name: Checkout tester branch
+        uses: actions/checkout@v4
+        with:
+          ref: tester
+
+      - name: Mark workspace safe for Git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install host tools & dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            unzip \
+            git \
+            python3 \
+            build-essential \
+            libsdl2-dev \
+            libglew-dev \
+            bsdmainutils
+
+      - name: Native build (Linux; asset extraction)
+        run: make -j$(nproc)
+
+      - name: Cross-compile for Switch
+        run: |
+          . "$DEVKITPRO/switchvars.sh"
+          make TARGET_SWITCH=1 -j$(nproc)
+
+      - name: Upload .nro artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Render96ex-Switch-nro
+          path: build/*_nx/*.nro
