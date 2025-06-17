@@ -1,0 +1,45 @@
+name: Patch Mupen64Plus-Next Core
+
+# you can also trigger on push to main, or schedule
+on:
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pull in repo
+        uses: actions/checkout@v4
+
+      - name: Install Python (if not already)
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Patch the core
+        run: |
+          mkdir -p patched
+          python3 scripts/patch_core.py \
+            mupen64plus_next_libretro.dll \
+            patched/mupen64plus_next_libretro.dll
+
+      - name: Create release
+        id: release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: patched-core-${{ github.run_number }}
+          name: Patched Mupen64Plus-Next Core
+          body: |
+            This release contains the `mupen64plus_next_libretro.dll` 
+            with the ROM mask bumped to 256 MB.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload patched DLL
+        uses: softprops/action-gh-release@v1
+        with:
+          upload_url: ${{ steps.release.outputs.upload_url }}
+          asset_path: patched/mupen64plus_next_libretro.dll
+          asset_name: mupen64plus_next_libretro.dll
+          asset_content_type: application/octet-stream
